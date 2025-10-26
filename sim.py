@@ -1,13 +1,12 @@
 from __future__ import annotations
-
-import datetime
 from typing import final
 
+import datetime
 import time
 
 from env import Environment
-from abstract.agent import Agent
-from agent.travel_assistant import TravelAssistant
+from abstract import *
+from agent import *
 
 def now_iso():
     return datetime.datetime.now().replace(microsecond=0).isoformat() + "Z"
