@@ -1,8 +1,6 @@
-import random
-import time
-from abstract_agent import Agent
-from abstract_agent import Action
-from abstract_agent import Observation
+from abstract.agent import Agent
+from abstract.agent import Action
+from abstract.agent import Observation
 
 class Environment:
 
@@ -22,3 +20,5 @@ class Environment:
     def act(self, action: Action, agent: Agent):
         pass
 
+    def render(self):
+        pass

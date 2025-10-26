@@ -1,12 +1,16 @@
 from __future__ import annotations
+
+import datetime
 from typing import final
 
-import random
 import time
 
 from env import Environment
-from abstract_agent import Agent
-from travel_assistant import TravelAssistant
+from abstract.agent import Agent
+from agent.travel_assistant import TravelAssistant
+
+def now_iso():
+    return datetime.datetime.now().replace(microsecond=0).isoformat() + "Z"
 
 @final
 class Simulator:
@@ -33,13 +37,14 @@ if __name__ == "__main__":
 
     curr_agents =[]
 
-    travel_a = TravelAssistant("onto/travel.owx")
+    travel_a = Agent.create("Travel Assistant", "agents.json")
     curr_agents.append(travel_a)
     env = Environment(5,curr_agents)
 
     while True :
 
         #print("My keys: ")
+        print(" ::", now_iso(), )
         string = env.agents[0].concat_header("DESCRIBE \"available_lines\"")
 
         print(string)
