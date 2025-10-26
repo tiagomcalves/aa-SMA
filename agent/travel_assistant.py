@@ -1,4 +1,5 @@
-from abstract.fipa_responder import Responder
+from abstract import Responder
+from abstract.utils import sparql_query
 
 
 class TravelAssistant(Responder):
@@ -6,9 +7,10 @@ class TravelAssistant(Responder):
     def __init__(self, name: str, properties: dict):
         super().__init__(name, properties)
 
+
     def available_lines(self) -> None:
 
-        avaliable_lines_query = """
+        available_lines_query = """
             SELECT ?station ?line ?transport_type
             WHERE{
                 ?station rdf:type :Station.
@@ -17,10 +19,8 @@ class TravelAssistant(Responder):
             }
         """
 
-        result_query = self.concat_header(avaliable_lines_query)
-        results = self.world.sparql_query(result_query)
-
-        for station, line, transport in results:
+        results = list(sparql_query(self.world, self.onto, available_lines_query))
+        for station, line, transport in list(results):
             print(f"Station: {station.name} on {line.name} by {transport.name}")
 
     def available_city_lines(self, city:str):
@@ -35,8 +35,7 @@ class TravelAssistant(Responder):
             }}
         """
 
-        result_query = self.concat_header(avlbl_ct_lns)
-        results = self.world.sparql_query(result_query)
+        results = sparql_query(self.world, self.onto, avlbl_ct_lns)
         print(list(results))
 
     def full_line(self, line_name):
@@ -53,6 +52,5 @@ class TravelAssistant(Responder):
         #   FILTER regex(str(?line), "ARGUMENT STRING", "i").
         #   "i" — tells SPARQL to ignore case.
 
-        result_query = self.concat_header(full_line_query)
-        results = self.world.sparql_query(result_query)
+        results = sparql_query(self.world, self.onto, full_line_query)
         print(list(results))

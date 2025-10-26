@@ -6,7 +6,9 @@ from .agent import Sensor
 from .agent import Direction
 from .agent import Agent
 
+__all__ = ["Action", "Observation", "Sensor", "Direction", "Agent"]
+
 # fipa_responder.py
 from .fipa_responder import Responder
 
-__all__ = ["Action", "Observation", "Sensor", "Direction", "Agent", "Responder"]
+__all__.append("Responder")

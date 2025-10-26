@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         #print("My keys: ")
         print(" ::", now_iso(), )
-        string = env.agents[0].concat_header("DESCRIBE \"available_lines\"")
+        string = env.agents[0].get_name()
 
         print(string)
 

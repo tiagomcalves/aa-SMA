@@ -32,6 +32,7 @@ class Agent(ABC):
     @abstractmethod
     def __init__(self, name: str, properties: dict):
         self.name = name
+        self.properties = properties
 
     @staticmethod
     def create(agent_name: str, file: str) -> Agent:
@@ -51,18 +52,8 @@ class Agent(ABC):
 
         return agent_subclass(agent_name, agents[agent_name])
 
-
-
     def get_name(self) -> str:
         return self.name
-
-    def concat_header(self, query_body: str) -> str:
-        result =f"""
-            PREFIX: <{self.onto.base_iri}>
-            PREFIX rdf: <{self.RDF}>
-            {query_body}
-        """
-        return result
 
     def observation(self, obs: Observation):
         pass
