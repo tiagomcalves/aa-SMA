@@ -4,6 +4,7 @@ import inspect
 import threading
 import time
 import logging
+from abc import abstractmethod
 
 from fastapi import FastAPI
 import uvicorn
@@ -15,6 +16,7 @@ from abstract import Agent
 
 class Responder(Agent):
 
+    @abstractmethod
     def __init__(self, name: str, properties: dict):
         super().__init__(name, properties)
         self.name = name
