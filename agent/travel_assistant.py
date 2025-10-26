@@ -7,8 +7,12 @@ class TravelAssistant(Responder):
     def __init__(self, name: str, properties: dict):
         super().__init__(name, properties)
 
+        self.response_table = {
+            "available_lines" : self.available_lines,
+            "available_city_lines" : self.available_city_lines
+        }
 
-    def available_lines(self) -> None:
+    def available_lines(self) -> str:
 
         available_lines_query = """
             SELECT ?station ?line ?transport_type
@@ -19,11 +23,14 @@ class TravelAssistant(Responder):
             }
         """
 
-        results = sparql_query(self.world, self.onto, available_lines_query)
-        for station, line, transport in list(results):
-            print(f"Station: {station.name} on {line.name} by {transport.name}")
+        query_results = sparql_query(self.world, self.onto, available_lines_query)
+        result = ""
+        for station, line, transport in list(query_results):
+            result += f"Station: {station.name} on {line.name} by {transport.name}\n"
 
-    def available_city_lines(self, city:str):
+        return result
+
+    def available_city_lines(self, city:str) -> str:
 
         avlbl_ct_lns = f"""
             SELECT ?city ?station ?line
@@ -35,8 +42,12 @@ class TravelAssistant(Responder):
             }}
         """
 
-        results = sparql_query(self.world, self.onto, avlbl_ct_lns)
-        print(list(results))
+        query_results = sparql_query(self.world, self.onto, avlbl_ct_lns)
+        result = ""
+        for city, station, line in list(query_results):
+            result += f"City: {city.name}, has station {station.name} with {line.name}\n"
+
+        return result
 
     def full_line(self, line_name):
 
