@@ -70,5 +70,3 @@ class Agent(ABC):
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations"
         pass
 
-    def available_lines(self):
-        pass
