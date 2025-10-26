@@ -1,0 +1,6 @@
+{
+  "Travel Assistant": {
+    "class": "travel_assistant.TravelAssistant",
+    "onto_file": "onto/travel.owx"
+  }
+}

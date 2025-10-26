@@ -1,11 +1,10 @@
-from rdflib import *
-from owlready2 import *
-from abstract_agent import Agent
+from abstract.fipa_responder import Responder
 
-class TravelAssistant(Agent):
 
-    def __init__(self, onto_file:str):
-        super().__init__(onto_file, True )
+class TravelAssistant(Responder):
+
+    def __init__(self, name: str, properties: dict):
+        super().__init__(name, properties)
 
     def available_lines(self) -> None:
 
