@@ -10,6 +10,27 @@ def _concat_header(onto: Ontology, query_body: str) -> str:
     return result
 
 def sparql_query(world: World, onto: Ontology, query_body: str):
+
+    results_list = []
     query = _concat_header(onto, query_body)
-    result = world.sparql_query(query)
-    return result
+
+    try:
+        rows = list(world.sparql_query(query))
+        # value = a if cond else b
+        # @tiago: I cant believe it myself either
+        print(f"Found: {len(rows)} result{"s" if (len(rows) > 1) else ""}")
+        for r in rows:
+            vals = []
+            for x in r:
+                try:
+                    ent = world[x]
+                    vals.append(x)
+                except Exception:
+                    vals.append(x)
+
+            results_list.append(vals)
+        return results_list
+
+    except Exception as e:
+        print(f"   Query failed: {e}")
+        return []

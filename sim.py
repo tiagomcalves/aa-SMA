@@ -4,6 +4,8 @@ from typing import final
 import datetime
 import time
 
+import uvicorn
+
 from env import Environment
 from abstract import *
 from agent import *
@@ -43,7 +45,7 @@ if __name__ == "__main__":
     while True :
 
         #print("My keys: ")
-        print(" ::", now_iso(), )
+        print(f"\n :: {now_iso()}" )
         string = env.agents[0].get_name()
 
         print(string)
@@ -53,4 +55,4 @@ if __name__ == "__main__":
 
         #render_state
 
-        time.sleep(0.75)
+        time.sleep(2.0)

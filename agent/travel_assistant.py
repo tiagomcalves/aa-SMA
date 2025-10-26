@@ -19,7 +19,7 @@ class TravelAssistant(Responder):
             }
         """
 
-        results = list(sparql_query(self.world, self.onto, available_lines_query))
+        results = sparql_query(self.world, self.onto, available_lines_query)
         for station, line, transport in list(results):
             print(f"Station: {station.name} on {line.name} by {transport.name}")
 
