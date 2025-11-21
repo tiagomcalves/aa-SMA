@@ -1,38 +1,13 @@
 from __future__ import annotations
-
-import uuid
 from typing import final
 
 import datetime
 import time
 
-import requests
-
 from env import Environment
 from abstract import *
 
-"""
-def available_lines():
-    msg = compose_request(conv, "planner@svc", "researcher@svc", "available_lines", "")
-    res = send("http://localhost:8000/ingest", msg)
-    query_res = res.get("reply").get("summary")
-    #print("\n", query_res)
-    print(query_res)
-
-def available_city_lines(input):
-    msg = compose_request(conv, "planner@svc", "researcher@svc", "available_city_lines", input)
-    res = send("http://localhost:8000/ingest", msg)
-    query_res = res.get("reply").get("summary")
-    #print("\n", query_res)
-    print(query_res)
-
-def malicious_available_lines(args):
-    msg = compose_request(conv, "planner@svc", "researcher@svc", "available_lines", args)
-    res = send("http://localhost:8000/ingest", msg)
-    query_res = res.get("reply").get("summary")
-    #print("\n", query_res)
-    print(query_res)
-"""
+from component.direction import Direction
 
 @final
 class Simulator:
@@ -52,13 +27,11 @@ class Simulator:
     def list_agents(self) -> list[Agent]:
         return self.agents
 
-    def think(self):    # execute
-
+    def think(self):    # executeclear
         pass
 
 
 if __name__ == "__main__":
-
     conv = "conv-{}".format(int(time.time()))
 
     curr_agents =[]

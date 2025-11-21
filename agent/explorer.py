@@ -1,4 +1,5 @@
-from abstract import Agent, Direction
+from abstract import Agent
+from component.direction import Direction
 
 class Explorer(Agent):
 

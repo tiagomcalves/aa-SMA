@@ -9,7 +9,7 @@ from abc import abstractmethod
 from fastapi import FastAPI
 import uvicorn
 
-from owlready2 import World, Ontology
+from owlready2 import World
 from abstract.utils import *
 from abstract import Agent
 
