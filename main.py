@@ -7,7 +7,7 @@ from env import Environment
 
 def main():
 
-    directory = Path("sim/")
+    directory = Path("problem/")
     subdirs = [f.name for f in directory.iterdir() if f.is_dir()]
     #Multi Agents System
     parser = argparse.ArgumentParser(
