@@ -1,0 +1,37 @@
+import argparse
+import sys
+from pathlib import Path
+
+from sim import Simulator
+from env import Environment
+
+def main():
+
+    directory = Path("sim/")
+    subdirs = [f.name for f in directory.iterdir() if f.is_dir()]
+    #Multi Agents System
+    parser = argparse.ArgumentParser(
+                                     description='Abstract system of agents with different implementations',
+                                     epilog='LEI-PL 2025/26 - 106090,122123',
+                                     usage=f'%(prog)s <'+ '/'.join(subdirs) + '> [options]')
+    # required arg
+    parser.add_argument("problem",choices=subdirs)
+    # optional args
+    parser.add_argument('-t', '--train', action='store_true', help='training mode')
+    parser.add_argument('-l', '--headless', action='store_true', help='run without graphics')
+    parser.add_argument("--verbose","-v",action="store_true",help="Enable verbose output")
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    args = parser.parse_args()
+
+    if args.train or args.headless or args.train:
+        pass
+
+    sim = Simulator(Environment(0,[]), [])
+    sim.run()
+
+if __name__ == '__main__':
+    main()

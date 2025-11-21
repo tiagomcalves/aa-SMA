@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+from argparse import Namespace
 from typing import final, cast
 
 import datetime
 import time
+import argparse
 
 from env import Environment
 from abstract import *
@@ -20,29 +23,28 @@ class Simulator:
         self.agents = agents
         self.curr_time = time.time()
 
-
     @staticmethod
-    def create(file: str) -> Simulator:
+    def create(problem: str, args: Namespace) -> Simulator:
         pass
 
     def list_agents(self) -> list[Agent]:
         return self.agents
 
-    def think(self):    # execute
+    def think(self) -> None:    # execute
         pass
+
+    def run(self) -> None:
+        conv = "conv-{}".format(int(time.time()))
+
+        g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "agents.json"))
+        self.agents.append(g_explorer_agent)
+        self.env = Environment(10, self.agents)
+
+        while True:
+            g_explorer_agent.move(Direction.RIGHT)
+            print(f"{g_explorer_agent.get_name()} current position: {g_explorer_agent.get_position()}")
+            time.sleep(0.75)
 
 
 if __name__ == "__main__":
-    conv = "conv-{}".format(int(time.time()))
-
-    g_curr_agents =[]
-    g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "agents.json"))
-    g_curr_agents.append(g_explorer_agent)
-    g_env = Environment(10,g_curr_agents)
-
-    simulator = Simulator(g_env, g_curr_agents)
-
-    while True :
-        g_explorer_agent.move(Direction.RIGHT)
-        print(f"{g_explorer_agent.get_name()} current position: {g_explorer_agent.get_position()}")
-        time.sleep(0.75)
+    print("You should run this script through main.py")
