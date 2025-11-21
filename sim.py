@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import final
+from typing import final, cast
 
 import datetime
 import time
@@ -7,6 +7,7 @@ import time
 from env import Environment
 from abstract import *
 
+from agent.explorer import Explorer
 from component.direction import Direction
 
 @final
@@ -27,21 +28,21 @@ class Simulator:
     def list_agents(self) -> list[Agent]:
         return self.agents
 
-    def think(self):    # executeclear
+    def think(self):    # execute
         pass
 
 
 if __name__ == "__main__":
     conv = "conv-{}".format(int(time.time()))
 
-    curr_agents =[]
-    explorer_agent = Agent.create("2D Explorer", "agents.json")
-    curr_agents.append(explorer_agent)
-    env = Environment(10,curr_agents)
+    g_curr_agents =[]
+    g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "agents.json"))
+    g_curr_agents.append(g_explorer_agent)
+    g_env = Environment(10,g_curr_agents)
 
-    simulator = Simulator(env, curr_agents)
+    simulator = Simulator(g_env, g_curr_agents)
 
     while True :
-        explorer_agent.move(Direction.RIGHT)
-        print(f"{explorer_agent.get_name()} current position: {explorer_agent.get_position()}")
+        g_explorer_agent.move(Direction.RIGHT)
+        print(f"{g_explorer_agent.get_name()} current position: {g_explorer_agent.get_position()}")
         time.sleep(0.75)
