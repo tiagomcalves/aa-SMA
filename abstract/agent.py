@@ -67,6 +67,6 @@ class Agent(ABC):
     def install(self, sensor: Sensor):
         pass
 
-    def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations"
+    def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
         pass
 

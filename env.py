@@ -1,6 +1,4 @@
-from abstract.agent import Agent
-from abstract.agent import Action
-from abstract.agent import Observation
+from abstract.agent import Agent, Action, Observation
 
 class Environment:
 
