@@ -3,7 +3,7 @@ from component.direction import Direction
 
 class Explorer(Agent):
 
-    position : (int, int)
+    position : tuple[int, int]
 
     def __init__(self, name: str, properties: dict):
         super().__init__(name, properties)
