@@ -1,4 +1,7 @@
-from abstract.agent import Agent, Action, Observation
+from abstract.agent import Agent
+
+from component.action import Action
+from component.observation import Observation
 
 class Environment:
 

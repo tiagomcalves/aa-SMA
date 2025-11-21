@@ -1,31 +1,11 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from enum import Enum
-
-from rdflib import *
-from owlready2 import *
-
+import importlib
 import json
 
-class Action:
-    pass
-
-class Observation:
-    pass
-
-class Sensor:
-    pass
-
-class Direction(Enum):
-    UP = (0,-1)
-    DOWN = (0,1)
-    LEFT = (-1,0)
-    RIGHT = (1,0)
-
-
-def load_class(param, param1):
-    pass
-
+from component.action import Action
+from component.observation import Observation
+from component.sensor import Sensor
 
 class Agent(ABC):
 
