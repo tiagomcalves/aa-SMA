@@ -36,7 +36,7 @@ class Simulator:
     def run(self) -> None:
         conv = "conv-{}".format(int(time.time()))
 
-        g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "agents.json"))
+        g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "problem/lighthouse/agents.json"))
         self.agents.append(g_explorer_agent)
         self.env = Environment(10, self.agents)
 
