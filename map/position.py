@@ -11,13 +11,13 @@ class Position:
         self._pos = pos
 
     def get(self) -> tuple[int,int]:
-        return self.pos
+        return self._pos
 
     def set(self, x: int, y: int) -> None:
-        self.pos = (x, y)
+        self._pos = (x, y)
 
     def move(self, x, y):
-        self.pos = (self.pos[0] + x, self.pos[1] + y)
+        self._pos = (self._pos[0] + x, self._pos[1] + y)
 
     def is_strictly_less_than(self, other:Position):
         other_t = other.get()
