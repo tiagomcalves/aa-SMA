@@ -10,10 +10,12 @@ from component.sensor import Sensor
 class Agent(ABC):
 
     _registry = {}
+    sensor : Sensor
 
     @abstractmethod
     def __init__(self, name: str, properties: dict):
         self.name = name
+        self.score = float(0.0)
         self.properties = properties
 
     @staticmethod
@@ -48,8 +50,8 @@ class Agent(ABC):
     def check_current_state(self, reward: float):
         pass
 
-    def install(self, sensor: Sensor):
-        pass
+    def install(self, sensor: Sensor) -> None:
+        self.sensor = sensor
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
         pass
