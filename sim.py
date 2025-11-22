@@ -2,9 +2,6 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import final, cast
 import time
-import json
-
-from decorator import append
 
 from env import Environment
 from abstract import *
@@ -47,7 +44,7 @@ Currently loaded {len(self.agents)} agents:
             #print(a_key, a_data)
             agents.append( Agent.create( a_key, a_data ))
 
-        env = Environment(args.problem, len(agents), agents)
+        env = Environment(args.problem)
         return Simulator(env, agents, args)
 
 
@@ -70,6 +67,7 @@ Currently loaded {len(self.agents)} agents:
                 casted.move(Direction.RIGHT)
                 print(f"{casted.get_name()} current position: {casted.get_position()}")
 
+            self.env.render()
             time.sleep(0.75)
 
 

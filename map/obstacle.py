@@ -7,6 +7,7 @@ class Obstacle:
     name: str
     reward: float
     remove_on_touch: bool
+    custom: bool
 
 
 class ObstaclePosition:
