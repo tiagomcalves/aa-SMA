@@ -7,14 +7,9 @@ from map.map import Map
 
 class Environment:
 
-    size = 0
-    agents = []
-
-    def __init__(self, problem: str, size, agents:list[Agent]):
+    def __init__(self, problem: str):
         self.problem = problem
-        self.agents = agents
-        self.size = size
-        self.map = Map(self)
+        self._map = Map(problem, self)
 
     def send_observation(self, agent: Agent) -> Observation:
         pass

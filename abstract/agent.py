@@ -1,6 +1,5 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-import importlib
 import json
 
 from component.action import Action
@@ -10,7 +9,7 @@ from component.sensor import Sensor
 class Agent(ABC):
 
     _registry = {}
-    sensor : Sensor
+    _sensor : Sensor
 
     @abstractmethod
     def __init__(self, name: str, properties: dict):
@@ -51,7 +50,12 @@ class Agent(ABC):
         pass
 
     def install(self, sensor: Sensor) -> None:
-        self.sensor = sensor
+        self._sensor = sensor
+
+    def has_sensor(self) -> bool:
+        if self._sensor is None:
+            return False
+        return True
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
         pass
