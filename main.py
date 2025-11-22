@@ -27,10 +27,12 @@ def main():
 
     args = parser.parse_args()
 
+    # got valid problem chosen
+    # process optionals
     if args.train or args.headless or args.train:
         pass
 
-    sim = Simulator(Environment(0,[]), [])
+    sim = Simulator.create(args)
     sim.run()
 
 if __name__ == '__main__':
