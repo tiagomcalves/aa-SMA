@@ -2,5 +2,15 @@
   "2D Explorer": {
     "class": "explorer.Explorer",
     "starting_position": "2,2"
+  },
+  
+  "Another Explorer": {
+    "class": "explorer.Explorer",
+    "starting_position": "2,3"
+  },
+  
+  "A Third Explorer!": {
+    "class": "explorer.Explorer",
+    "starting_position": "2,4"
   }
 }

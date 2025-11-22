@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from argparse import Namespace
 from typing import final, cast
-
-import datetime
 import time
-import argparse
+import json
+
+from decorator import append
 
 from env import Environment
 from abstract import *
@@ -13,19 +12,48 @@ from abstract import *
 from agent.explorer import Explorer
 from component.direction import Direction
 
+def print_json(data: dict[str, str]) -> None:
+    for name, info in data.items():
+        print(name, info)
+
 @final
 class Simulator:
 
-    config: str
-
-    def __init__(self, env: Environment, agents: list[Agent]):
+    def __init__(self, env: Environment, agents: list[Agent], args:Namespace):
+        self.name = args.problem
         self.env = env
         self.agents = agents
         self.curr_time = time.time()
+        self._boot_output()
+
+    def _boot_output(self) -> None:
+        _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self.agents)
+        print(
+f"""------------------------------------------------
+Created new Simulation of \"{self.name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.curr_time))}
+
+Currently loaded {len(self.agents)} agents: 
+{_agents_list}
+------------------------------------------------""")
 
     @staticmethod
-    def create(problem: str, args: Namespace) -> Simulator:
-        pass
+    def create(args: Namespace) -> Simulator:
+        print(args)
+        agents_data = Simulator._load_agents(args.problem)
+        #print_json(agents_data)
+        agents = []
+
+        for a_key, a_data in agents_data.items():
+            #print(a_key, a_data)
+            agents.append( Agent.create( a_key, a_data ))
+
+        env = Environment(len(agents), agents)
+        return Simulator(env, agents, args)
+
+
+    @staticmethod
+    def _load_agents(file: str) -> dict[str, dict]:
+        return Agent.load_agents_json(file)
 
     def list_agents(self) -> list[Agent]:
         return self.agents
@@ -36,13 +64,12 @@ class Simulator:
     def run(self) -> None:
         conv = "conv-{}".format(int(time.time()))
 
-        g_explorer_agent = cast(Explorer, Agent.create("2D Explorer", "problem/lighthouse/agents.json"))
-        self.agents.append(g_explorer_agent)
-        self.env = Environment(10, self.agents)
-
         while True:
-            g_explorer_agent.move(Direction.RIGHT)
-            print(f"{g_explorer_agent.get_name()} current position: {g_explorer_agent.get_position()}")
+            for agent in self.agents:
+                casted = cast(Explorer, agent)
+                casted.move(Direction.RIGHT)
+                print(f"{casted.get_name()} current position: {casted.get_position()}")
+
             time.sleep(0.75)
 
 
