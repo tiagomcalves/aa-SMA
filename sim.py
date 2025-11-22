@@ -47,7 +47,7 @@ Currently loaded {len(self.agents)} agents:
             #print(a_key, a_data)
             agents.append( Agent.create( a_key, a_data ))
 
-        env = Environment(len(agents), agents)
+        env = Environment(args.problem, len(agents), agents)
         return Simulator(env, agents, args)
 
 
@@ -75,3 +75,4 @@ Currently loaded {len(self.agents)} agents:
 
 if __name__ == "__main__":
     print("You should run this script through main.py")
+    exit(1)

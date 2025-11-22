@@ -8,3 +8,4 @@ class Sensor:
         self.env = env
 
     def get_info(self):
+        pass
