@@ -17,7 +17,9 @@ def print_json(data: dict[str, str]) -> None:
 class Simulator:
 
     def __init__(self, env: Environment, agents: list[Agent], args:Namespace):
+        self.args = args
         self.name = args.problem
+        self._STEP_SECONDS = args.step / 1000
         self.env = env
         self.agents = agents
         self.curr_time = time.time()
@@ -67,8 +69,9 @@ Currently loaded {len(self.agents)} agents:
                 casted.move(Direction.RIGHT)
                 print(f"{casted.get_name()} current position: {casted.get_position()}")
 
-            self.env.render()
-            time.sleep(0.75)
+            if not self.args.headless:
+                self.env.render()
+                time.sleep(self._STEP_SECONDS)
 
 
 if __name__ == "__main__":
