@@ -30,7 +30,7 @@ class Simulator:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self.agents)
         print(
 f"""------------------------------------------------
-Created new Simulation of \"{self.name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.curr_time))}
+Initialize new Simulation of \"{self.name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.curr_time))}
 
 Currently loaded {len(self.agents)} agents: 
 {_agents_list}
