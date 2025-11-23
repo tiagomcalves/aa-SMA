@@ -1,16 +1,19 @@
 {
   "2D Explorer": {
     "class": "explorer.Explorer",
-    "starting_position": "2,2"
+    "starting_position": "2,2",
+    "char": "E"
   },
   
   "Another Explorer": {
     "class": "explorer.Explorer",
-    "starting_position": "2,3"
+    "starting_position": "2,3",
+    "char": "A"
   },
   
   "A Third Explorer!": {
     "class": "explorer.Explorer",
-    "starting_position": "2,4"
+    "starting_position": "2,4",
+    "char": "B"
   }
 }

@@ -1,24 +1,30 @@
+from abc import abstractmethod
+
 from abstract import Agent
-from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
 from component.observation import Observation
 from map.position import Position
 
-class Explorer(Navigator2D):
+class Navigator2D(Agent):
 
+    _position : Position
+    _char : str
+
+    @abstractmethod
     def __init__(self, name: str, properties: dict):
         super().__init__(name, properties)
-        starting_position = properties["starting_position"].split(",")
-        self.position = Position( int(starting_position[0]), int(starting_position[1]) )
-        self.char = properties["char"]
+        self._char = properties["char"]
 
     def get_position(self) -> Position:
-        return self.position
+        return self._position
 
+    @abstractmethod
     def move(self, direction: Direction) -> None:
-        vx, vy = direction.value
-        self.position.move(vx, vy)
+        pass
+
+    def get_char(self) -> str:
+        return self._char
 
     def observation(self, obs: Observation):
         pass

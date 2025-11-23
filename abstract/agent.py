@@ -59,4 +59,3 @@ class Agent(ABC):
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
         pass
-
