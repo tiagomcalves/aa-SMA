@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from core.sim import Simulator
-from core.agent_importer import import_all_agents
+from core.module_importer import import_agents
 
 def main():
 
@@ -36,7 +36,7 @@ def main():
     if args.train or args.headless or args.train:
         pass
 
-    import_all_agents()
+    import_agents()
     sim = Simulator.create(args)
     sim.run()
 

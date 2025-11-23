@@ -26,8 +26,11 @@ class Navigator2D(Agent):
     def get_char(self) -> str:
         return self._char
 
+    def use_sensor(self) -> None:
+        self._sensor.get_surroundings(self.get_position())
+
     def observation(self, obs: Observe):
         pass
 
-    def act(self) -> Action:
-        pass
+    def act(self) -> None:
+        self.use_sensor()

@@ -1,18 +1,18 @@
 from __future__ import annotations
 from argparse import Namespace
+from pprint import pprint
 from typing import final
 import time
 
+import abstract
+from core.loader import ConfigLoader
+from core.module_importer import import_sensor_handlers
 from core.scheduler import Scheduler
 from core.env import Environment
 from abstract import *
-from component.sensor import Sensor
+from component.sensor.sensor import Sensor
 from map.position import Position
 
-
-def print_json(data: dict[str, str]) -> None:
-    for name, info in data.items():
-        print(name, info)
 
 @final
 class Simulator:
@@ -40,25 +40,25 @@ Currently loaded {len(self._agents)} agents:
     @staticmethod
     def create(args: Namespace) -> Simulator:
         print(args)
-        agents_data = Simulator._load_agents(args.problem)
-        #print_json(agents_data)
-        agents = []
+        loader = ConfigLoader(args.problem)
 
+        agents_data = loader.retrieve_data("agents")
+        pprint(agents_data)
+        agents = []
         for a_key, a_data in agents_data.items():
             agents.append( Agent.create( a_key, a_data ))
 
-        env = Environment(args.problem)
+        import_sensor_handlers()
+
+        env = Environment(args.problem, loader.retrieve_data("environment"))
+        for handler in loader.retrieve_data("environment")["sensor_handlers"]:
+            env.register_handler(handler)
 
         sensor = Sensor(env)
         for agent in agents:
             agent.install(sensor)
 
         return Simulator(env, agents, args)
-
-
-    @staticmethod
-    def _load_agents(file: str) -> dict[str, dict]:
-        return Agent.load_agents_json(file)
 
     def _pack_agents_positions(self) -> dict[Position, str]:
         positions = {}
@@ -83,6 +83,11 @@ Currently loaded {len(self._agents)} agents:
         while True:
 
             print(conv)
+
+            for a in self._agents:
+                if isinstance(a, abstract.Navigator2D):
+                    a.act()
+
             if not self.args.headless:
                 self._env.render(self._pack_agents_positions())
                 time.sleep(self._STEP_SECONDS)
