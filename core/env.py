@@ -1,6 +1,4 @@
-from typing import List
 from abstract.agent import Agent
-
 from component.action import Action
 from component.observe import Observe
 from map.map import Map

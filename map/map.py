@@ -1,7 +1,5 @@
-from pprint import pprint
 import json
 from map.entity import MapEntity, EntityPosition
-
 from map.position import Position
 
 _EMPTY_CELL = " ."
