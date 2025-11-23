@@ -1,13 +1,11 @@
 from __future__ import annotations
 from argparse import Namespace
-from typing import final, cast
+from typing import final
 import time
 
-from abstract.nav2d import Navigator2D
 from core.scheduler import Scheduler
 from core.env import Environment
 from abstract import *
-
 from component.sensor import Sensor
 from map.position import Position
 

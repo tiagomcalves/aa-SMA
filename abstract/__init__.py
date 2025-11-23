@@ -1,8 +1,5 @@
-
-# agent.py
 from .agent import Agent
-
-# fipa_responder.py
 from .fipa_responder import Responder
+from .nav2d import Navigator2D
 
-__all__ = ["Agent", "Responder"]
+__all__ = ["Agent", "Responder", "Navigator2D"]

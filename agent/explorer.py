@@ -1,4 +1,3 @@
-from abstract import Agent
 from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction

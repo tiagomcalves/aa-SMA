@@ -1,5 +1,4 @@
 from typing import Union
-
 from typing_extensions import final
 
 from component.action import Action
