@@ -12,6 +12,7 @@ class Scheduler:
         self._last_queue_key = 5
 
     def step(self):
+        self._queue.pop(self._step, None)
         self._step += 1
 
     def curr_step(self) -> int:
