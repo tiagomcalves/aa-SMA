@@ -1,0 +1,35 @@
+{
+  "environment": {
+    "sensor_handlers": ["surroundings"],
+    "map": {
+      "file": "map_example",
+      "boundaries": [10, 10],
+      "spawns": [[2, 2]],
+      "spawn_choice": 0,
+      "destination": [[9, 9]],
+      "destination_choice": 0,
+      "needed_agents": 1,
+      "agent_type": "explorer.Explorer"
+    }
+  },
+
+  "agents": {
+    "2D Explorer": {
+      "class": "explorer.Explorer",
+      "starting_position": [8, 0],
+      "char": "E"
+    },
+
+    "Another Explorer": {
+      "class": "explorer.Explorer",
+      "starting_position": [0, 0],
+      "char": "A"
+    },
+
+    "A Third Explorer!": {
+      "class": "explorer.Explorer",
+      "starting_position": [9, 8],
+      "char": "B"
+    }
+  }
+}
