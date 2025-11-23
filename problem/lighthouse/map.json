@@ -1,9 +1,0 @@
-{
-  "boundaries": "10,10",
-  "spawns": ["S"],
-  "spawn_choice": 0,
-  "destination": ["D"],
-  "destination_choice": 0,
-  "needed_agents": 1,
-  "agent_type": "explorer.Explorer"
-}
