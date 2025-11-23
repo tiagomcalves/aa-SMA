@@ -1,4 +1,4 @@
-from component.observation import Observation
+from component.observe import Observe
 from map.position import Position
 
 class Sensor:
@@ -9,5 +9,5 @@ class Sensor:
     def get_info(self):
         pass
 
-    def get_surroundings(self, pos: Position) -> Observation:
+    def get_surroundings(self, pos: Position) -> Observe:
         pass
