@@ -4,11 +4,18 @@ class Position:
 
     _pos : tuple[int, int]
 
-    def __init__(self, pos: tuple[int, int]):
-        if pos[0] < 0 or pos[1] < 0:
-            ValueError(f"Position cant have a coord below 0: {pos}")
+    def __init__(self, x: int, y: int):
+        if x < 0 or y < 0:
+            ValueError(f"Position cant have a coord below 0: {x} {y}")
 
-        self._pos = pos
+        self._pos = (x,y)
+
+    def __hash__(self):
+        return hash(self._pos)
+
+    def __eq__(self, other):
+        _other = other.get()
+        return self._pos[0] == _other[0] and self._pos[1] == _other[1]
 
     def get(self) -> tuple[int,int]:
         return self._pos
@@ -16,7 +23,7 @@ class Position:
     def set(self, x: int, y: int) -> None:
         self._pos = (x, y)
 
-    def move(self, x, y):
+    def move(self, x:int, y:int):
         self._pos = (self._pos[0] + x, self._pos[1] + y)
 
     def is_strictly_less_than(self, other:Position):
@@ -24,3 +31,7 @@ class Position:
         if self._pos[0] < other_t[0] and self._pos[1] < other_t[1]:
             return True
         return False
+
+    def __str__(self):
+        return f"({self._pos[0]},{self._pos[1]})"
+

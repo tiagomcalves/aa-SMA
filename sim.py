@@ -3,11 +3,13 @@ from argparse import Namespace
 from typing import final, cast
 import time
 
+from abstract.nav2d import Navigator2D
 from env import Environment
 from abstract import *
 
 from agent.explorer import Explorer
 from component.direction import Direction
+from component.sensor import Sensor
 
 def print_json(data: dict[str, str]) -> None:
     for name, info in data.items():
@@ -47,12 +49,28 @@ Currently loaded {len(self.agents)} agents:
             agents.append( Agent.create( a_key, a_data ))
 
         env = Environment(args.problem)
+
+        sensor = Sensor(env)
+        for agent in agents:
+            agent.install(sensor)
+
         return Simulator(env, agents, args)
 
 
     @staticmethod
     def _load_agents(file: str) -> dict[str, dict]:
         return Agent.load_agents_json(file)
+
+    def _pack_agents_positions(self) -> dict[Position, str]:
+        positions = {}
+
+        for a in self.agents:
+            if not isinstance(a, Navigator2D):
+                continue
+
+            positions[a.get_position()] = a.get_char()
+
+        return positions
 
     def list_agents(self) -> list[Agent]:
         return self.agents
@@ -64,13 +82,8 @@ Currently loaded {len(self.agents)} agents:
         conv = "conv-{}".format(int(time.time()))
 
         while True:
-            for agent in self.agents:
-                casted = cast(Explorer, agent)
-                casted.move(Direction.RIGHT)
-                print(f"{casted.get_name()} current position: {casted.get_position()}")
-
             if not self.args.headless:
-                self.env.render()
+                self.env.render(self._pack_agents_positions())
                 time.sleep(self._STEP_SECONDS)
 
 

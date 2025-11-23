@@ -2,21 +2,22 @@ from dataclasses import dataclass
 from map.position import Position
 
 @dataclass(frozen=True)
-class Obstacle:
+class MapEntity:
     char: str
     name: str
     reward: float
     remove_on_touch: bool
     custom: bool
+    draw: bool
 
 
-class ObstaclePosition:
+class EntityPosition:
 
     _step_count : int
 
-    def __init__(self, pos: Position, obstacle: Obstacle):
+    def __init__(self, pos: Position, entity: MapEntity):
         self.pos = pos
-        self.obstacle = obstacle
+        self.obstacle = entity
 
 
     def stepped_on(self):
