@@ -62,10 +62,13 @@ class Map:
 
         return map_cells
 
-    def is_inbounds(self, pos: Position) -> bool:
+    def _is_inbounds(self, pos: Position) -> bool:
         if pos.is_strictly_less_than(self._boundaries):
             return True
         return False
+
+    def sensorAPI(self, pos: Position):
+        pass
 
     def render(self, agent_positions: dict[Position, str]):
         for y in range(self._max_y):
