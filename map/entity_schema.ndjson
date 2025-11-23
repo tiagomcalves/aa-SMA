@@ -1,4 +1,3 @@
-{"char": ".", "name": "Boundarie", "reward": -1.0,  "remove_on_touch": false, "custom": false, "draw": false}
 {"char": "#", "name": "Wall",      "reward": -1.0,  "remove_on_touch": false, "custom": false, "draw": true}
 {"char": "S",  "name": "Spawn",     "reward": 0.0,  "remove_on_touch": false, "custom": true,  "draw": false}
 {"char": "O",  "name": "Objective", "reward": 500,  "remove_on_touch": false, "custom": false, "draw": true}

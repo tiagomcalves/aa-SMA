@@ -1,8 +1,11 @@
 import json
+from typing import Union
+
 from map.entity import MapEntity, EntityPosition
 from map.position import Position
 
 _EMPTY_CELL = " ."
+OUT_OF_BOUNDS = Position(-1,-1)
 
 
 def _format_char(char: str):
@@ -14,12 +17,12 @@ class Map:
     _boundaries: Position
     _map_cells: dict[Position, MapEntity]
 
-    def __init__(self, problem: str, env):
+    def __init__(self, problem: str, data: dict, env):
         self._env = env
 
         self._char_entity_mapping = self._load_obst_schema("map/entity_schema.ndjson")
-        self._load_map_settings("problem/" + problem + "/map.json")
-        self._map_cells = self._load_map_grid("problem/" + problem + "/map.grid")
+        self._load_map_settings(data)
+        self._map_cells = self._load_map_grid("problem/" + problem + "/" + data["file"] + ".grid")
 
         self._max_x, self._max_y = self._boundaries.get()
 
@@ -33,17 +36,17 @@ class Map:
                 _char_to_ent[obj.char] = obj
         return _char_to_ent
 
-    def _load_map_settings(self, path: str) -> None:
-        with open(path, "r") as f:
-            data = json.load(f)
-
-        (x, y) = (map(int, data["boundaries"].split(",")))  #splits and maps as int
+    def _load_map_settings(self, data:dict) -> None:
+        (x, y) = data["boundaries"]
         self._boundaries = Position(x, y)
 
     def _load_map_grid(self, path: str) -> dict[Position, MapEntity]:
         (max_x, max_y) = self._boundaries.get()
 
-        map_cells: dict[Position, MapEntity] = {}
+        map_cells: dict[Position, MapEntity] = \
+            {
+                OUT_OF_BOUNDS: MapEntity("\0", "Boundarie", -9999.0, False, False, False)
+            }
 
         with open(path, "r") as f:
             for y, line in enumerate(f):
@@ -61,12 +64,22 @@ class Map:
         return map_cells
 
     def _is_inbounds(self, pos: Position) -> bool:
-        if pos.is_strictly_less_than(self._boundaries):
-            return True
-        return False
+        if not pos.is_strictly_less_than(self._boundaries):
+            return False
 
-    def sensorAPI(self, pos: Position):
-        pass
+        if pos.has_negative_coord():
+            return False
+
+        return True
+
+    def get_position_data(self, pos: Position) -> str:
+        if not self._is_inbounds(pos):
+            return self._map_cells[OUT_OF_BOUNDS].name
+
+        if self._map_cells.get(pos):
+            return self._map_cells.get(pos).name
+
+        return "Empty"
 
     def render(self, agent_positions: dict[Position, str]):
         for y in range(self._max_y):

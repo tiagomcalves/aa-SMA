@@ -4,7 +4,7 @@ import json
 
 from component.action import Action
 from component.observe import Observe
-from component.sensor import Sensor
+from component.sensor.sensor import Sensor
 
 class Agent(ABC):
 
@@ -16,14 +16,6 @@ class Agent(ABC):
         self.name = name
         self.score = float(0.0)
         self.properties = properties
-
-    @staticmethod
-    def load_agents_json(problem: str) -> dict[str, dict]:
-        agents = {}
-        with open("problem/" + problem + "/agents.json", "r", encoding="utf-8") as f:
-            agents = json.load(f)
-
-        return agents
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -56,6 +48,10 @@ class Agent(ABC):
         if self._sensor is None:
             return False
         return True
+
+    @abstractmethod
+    def use_sensor(self) -> Observe:
+        pass
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
         pass

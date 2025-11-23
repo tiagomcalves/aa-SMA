@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from numpy.ma.core import true_divide
+
 from component.direction import Direction
 
 
@@ -8,9 +10,6 @@ class Position:
     _pos : tuple[int, int]
 
     def __init__(self, x: int, y: int):
-        if x < 0 or y < 0:
-            raise ValueError(f"Position cant have a coord below 0: {x} {y}")
-
         self._pos = (x,y)
 
     def __hash__(self):
@@ -42,16 +41,24 @@ class Position:
     def move(self, x:int, y:int):
         self._pos = (self._pos[0] + x, self._pos[1] + y)
 
-    def get_from_direction(self, direction:Direction):
+    def get_from_direction(self, direction:Direction) -> Position:
         return self + direction
 
-
-    def is_strictly_less_than(self, other:Position):
+    def is_strictly_less_than(self, other:Position) -> bool:
         other_t = other.get()
         if self._pos[0] < other_t[0] and self._pos[1] < other_t[1]:
+            return True
+        return False
+
+    def has_negative_coord(self) -> bool:
+        if self.get()[0] < 0 or self.get()[1] < 0:
             return True
         return False
 
     def __str__(self):
         return f"({self._pos[0]},{self._pos[1]})"
 
+
+# Invalid position instance
+Position.OUT_OF_BOUNDS = super(Position, Position).__new__(Position)
+Position.OUT_OF_BOUNDS._pos = (-1, -1)
