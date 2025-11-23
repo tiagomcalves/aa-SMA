@@ -2,7 +2,7 @@ from typing import List
 from abstract.agent import Agent
 
 from component.action import Action
-from component.observation import Observation
+from component.observe import Observe
 from map.map import Map
 from map.position import Position
 
@@ -13,7 +13,7 @@ class Environment:
         self.problem = problem
         self._map = Map(problem, self)
 
-    def send_observation(self, agent: Agent) -> Observation:
+    def send_observation(self, agent: Agent) -> Observe:
         pass
 
     def update(self):
@@ -25,5 +25,5 @@ class Environment:
     def render(self, agent_positions: dict[Position, str]):
         self._map.render(agent_positions)
 
-    def retrieve_surroundings(self, pos:Position) -> Observation:
+    def retrieve_surroundings(self, pos:Position) -> Observe:
         pass

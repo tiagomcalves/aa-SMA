@@ -2,7 +2,7 @@ from abstract import Agent
 from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
-from component.observation import Observation
+from component.observe import Observe
 from map.position import Position
 
 class Explorer(Navigator2D):
@@ -16,11 +16,11 @@ class Explorer(Navigator2D):
     def get_position(self) -> Position:
         return self.position
 
-    def move(self, direction: Direction) -> None:
-        vx, vy = direction.value
-        self.position.move(vx, vy)
+    #def move(self, direction: Direction) -> None:
+    #    vx, vy = direction.value
+    #    self.position.move(vx, vy)
 
-    def observation(self, obs: Observation):
+    def observation(self, obs: Observe):
         pass
 
     def act(self) -> Action:

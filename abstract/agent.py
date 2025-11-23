@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 import json
 
 from component.action import Action
-from component.observation import Observation
+from component.observe import Observe
 from component.sensor import Sensor
 
 class Agent(ABC):
@@ -40,7 +40,7 @@ class Agent(ABC):
     def get_name(self) -> str:
         return self.name
 
-    def observation(self, obs: Observation):
+    def observation(self, obs: Observe):
         pass
 
     def act(self) -> Action:

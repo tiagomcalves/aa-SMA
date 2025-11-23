@@ -4,12 +4,13 @@ from typing import final, cast
 import time
 
 from abstract.nav2d import Navigator2D
-from env import Environment
+from core.scheduler import Scheduler
+from core.env import Environment
 from abstract import *
 
-from agent.explorer import Explorer
-from component.direction import Direction
 from component.sensor import Sensor
+from map.position import Position
+
 
 def print_json(data: dict[str, str]) -> None:
     for name, info in data.items():
@@ -20,20 +21,21 @@ class Simulator:
 
     def __init__(self, env: Environment, agents: list[Agent], args:Namespace):
         self.args = args
-        self.name = args.problem
+        self._scheduler = Scheduler()
+        self._name = args.problem
         self._STEP_SECONDS = args.step / 1000
-        self.env = env
-        self.agents = agents
-        self.curr_time = time.time()
+        self._env = env
+        self._agents = agents
+        self._curr_time = time.time()
         self._boot_output()
 
     def _boot_output(self) -> None:
-        _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self.agents)
+        _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
         print(
 f"""------------------------------------------------
-Initialize new Simulation of \"{self.name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self.curr_time))}
+Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
 
-Currently loaded {len(self.agents)} agents: 
+Currently loaded {len(self._agents)} agents: 
 {_agents_list}
 ------------------------------------------------""")
 
@@ -45,7 +47,6 @@ Currently loaded {len(self.agents)} agents:
         agents = []
 
         for a_key, a_data in agents_data.items():
-            #print(a_key, a_data)
             agents.append( Agent.create( a_key, a_data ))
 
         env = Environment(args.problem)
@@ -64,7 +65,7 @@ Currently loaded {len(self.agents)} agents:
     def _pack_agents_positions(self) -> dict[Position, str]:
         positions = {}
 
-        for a in self.agents:
+        for a in self._agents:
             if not isinstance(a, Navigator2D):
                 continue
 
@@ -73,18 +74,22 @@ Currently loaded {len(self.agents)} agents:
         return positions
 
     def list_agents(self) -> list[Agent]:
-        return self.agents
+        return self._agents
 
     def think(self) -> None:    # execute
-        pass
+        self._scheduler.step()
 
     def run(self) -> None:
         conv = "conv-{}".format(int(time.time()))
 
         while True:
+
+            print(conv)
             if not self.args.headless:
-                self.env.render(self._pack_agents_positions())
+                self._env.render(self._pack_agents_positions())
                 time.sleep(self._STEP_SECONDS)
+
+            self.think()
 
 
 if __name__ == "__main__":

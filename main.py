@@ -2,8 +2,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from sim import Simulator
-from env import Environment
+from core.sim import Simulator
+
 
 def main():
 
