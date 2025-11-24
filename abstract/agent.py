@@ -1,15 +1,16 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-import json
 
 from component.action import Action
-from component.observe import Observe
+from component.observation import Observation
 from component.sensor.sensor import Sensor
 
 class Agent(ABC):
 
     _registry = {}
     _sensor : Sensor
+    curr_observation : Observation
+    curr_action : Action
 
     @abstractmethod
     def __init__(self, name: str, properties: dict):
@@ -32,8 +33,13 @@ class Agent(ABC):
     def get_name(self) -> str:
         return self.name
 
-    def observation(self, obs: Observe):
+    def observation(self, obs: Observation):
         pass
+
+    def has_observation(self) -> bool:
+        if self.curr_observation:
+            return True
+        return False
 
     def act(self) -> Action:
         pass
@@ -50,7 +56,7 @@ class Agent(ABC):
         return True
 
     @abstractmethod
-    def use_sensor(self) -> Observe:
+    def use_sensor(self) -> Observation:
         pass
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
