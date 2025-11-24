@@ -2,7 +2,7 @@ from typing import Union
 
 from abstract.agent import Agent
 from component.action import Action
-from component.observe import Observe
+from component.observation import Observation
 from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
 from map.entity import MapEntity
@@ -23,7 +23,7 @@ class Environment:
         handler_instance = handler_cls()
         self._handlers[request_type] = handler_instance
 
-    def send_observation(self, agent: Agent) -> Observe:
+    def send_observation(self, agent: Agent) -> Observation:
         pass
 
     def update(self):
@@ -38,7 +38,7 @@ class Environment:
     def get_data(self, pos: Position) -> str:
         return self._map.get_position_data(pos)
 
-    def handle_request(self, request: dict) -> dict:
+    def handle_request(self, request: dict) -> Observation:
         req_type = request.get("type")
         handler = self._handlers.get(req_type)
         if handler:

@@ -3,7 +3,7 @@ from abc import abstractmethod
 from abstract import Agent
 from component.action import Action
 from component.direction import Direction
-from component.observe import Observe
+from component.observation import Observation
 from map.position import Position
 
 class Navigator2D(Agent):
@@ -26,11 +26,14 @@ class Navigator2D(Agent):
     def get_char(self) -> str:
         return self._char
 
-    def use_sensor(self) -> None:
-        self._sensor.get_surroundings(self.get_position())
-
-    def observation(self, obs: Observe):
+    @abstractmethod
+    def use_sensor(self) -> Observation:
         pass
 
-    def act(self) -> None:
-        self.use_sensor()
+    @abstractmethod
+    def observation(self, obs: Observation):
+        pass
+
+    @abstractmethod
+    def act(self) -> Action:
+        pass

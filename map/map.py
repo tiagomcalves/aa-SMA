@@ -74,12 +74,12 @@ class Map:
 
     def get_position_data(self, pos: Position) -> str:
         if not self._is_inbounds(pos):
-            return self._map_cells[OUT_OF_BOUNDS].name
+            return  self._map_cells[OUT_OF_BOUNDS].name.upper()
 
         if self._map_cells.get(pos):
-            return self._map_cells.get(pos).name
+            return self._map_cells.get(pos).name.upper()
 
-        return "Empty"
+        return "EMPTY"
 
     def render(self, agent_positions: dict[Position, str]):
         for y in range(self._max_y):

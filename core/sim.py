@@ -85,8 +85,10 @@ Currently loaded {len(self._agents)} agents:
             print(conv)
 
             for a in self._agents:
-                if isinstance(a, abstract.Navigator2D):
-                    a.act()
+                a.act()
+
+            #for a in self._agents:
+            #    a.has_observation()
 
             if not self.args.headless:
                 self._env.render(self._pack_agents_positions())

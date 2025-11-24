@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Dict, Any
 
 from component.direction import Direction
@@ -27,3 +28,12 @@ class Action:
     @classmethod
     def wait(cls):
         return cls("wait", {})
+
+
+class ActionResponse(Enum):
+    def _generate_next_value_(name, start, count, last_values):
+        return count  # count starts at 0
+
+    ACCEPTED = auto()
+    DENIED = auto()
+    HOLD = auto()
