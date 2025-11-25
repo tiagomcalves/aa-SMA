@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from core.logger import log
 from component.direction import Direction
 from component.observation import Observation, ObservationType
 from component.sensor.registry import register_handler, HANDLER_REGISTRY
@@ -26,7 +27,7 @@ class SurroundingsHandler(Handler):
             }
         }
 
-        print("[Env] processing surroundings:", pos)
+        log().vprint("[Env] processing surroundings:", pos)
         obs = Observation(ObservationType.SURROUNDINGS, surroundings_payload)
         return obs
 

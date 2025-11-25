@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from core.logger import log
 from component.action import Action
 from component.observation import Observation
 from component.sensor.sensor import Sensor
@@ -25,7 +26,7 @@ class Agent(ABC):
 
     @classmethod
     def create(cls, name: str, data: dict) -> Agent:
-        print(f"create( name: \"{name}\", data: {data} ))")
+        log().vprint(f"create( name: \"{name}\", data: {data} ))")
         full_class_str = data["class"]
         module_name, class_name = full_class_str.rsplit(".", 1)
         sub_cls = Agent._registry[class_name]
