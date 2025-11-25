@@ -38,17 +38,17 @@ def main():
 
     # got valid problem chosen, process optionals
 
+    Logger.initialize(args.verbose)
+
     if args.train or args.headless:
         pass
 
     import_agents()
-    
-    Logger.initialize(args.verbose)
     sim = Simulator.create(args)
 
     if not args.autostart:
         input("Press <Enter> to start the simulation...")
-    
+
     sim.run()
 
 if __name__ == '__main__':

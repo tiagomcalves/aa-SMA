@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 import pathlib
+from core.logger import log
 
 def import_agents():
     package_name = "agent"
@@ -10,7 +11,7 @@ def import_agents():
         module_name = module_info.name
         full_name = f"{package_name}.{module_name}"
 
-        print(f"Importing {full_name}")
+        log().vprint(f"Importing {full_name}")
         importlib.import_module(full_name)
 
 def import_sensor_handlers():
