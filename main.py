@@ -25,7 +25,7 @@ def main():
     # optional args
     parser.add_argument('-a', '--autostart', help='automatically start simulation', action='store_true')
     mutex_group.add_argument('-l', '--headless', help='run without renderer (mutually exclusive with --step)', action='store_true')
-    mutex_group.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)', nargs=1, type=int, metavar="ms")
+    mutex_group.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)', type=int, metavar="ms")
     parser.add_argument('-t', '--train', help='training mode', action='store_true')
     parser.add_argument('-v', '--verbose',help="enable verbose output", action='store_true')
 
