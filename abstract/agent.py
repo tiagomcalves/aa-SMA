@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from typing import Optional
 
 from component.action import Action
 from component.observation import Observation
@@ -9,8 +10,8 @@ class Agent(ABC):
 
     _registry = {}
     _sensor : Sensor
-    curr_observation : Observation
-    curr_action : Action
+    curr_observation : Optional[Observation] = None
+    curr_action : Optional[Action] = None
 
     @abstractmethod
     def __init__(self, name: str, properties: dict):
@@ -33,14 +34,16 @@ class Agent(ABC):
     def get_name(self) -> str:
         return self.name
 
+    @abstractmethod
     def observation(self, obs: Observation):
         pass
 
     def has_observation(self) -> bool:
-        if self.curr_observation:
+        if not self.curr_observation == None:
             return True
         return False
 
+    @abstractmethod
     def act(self) -> Action:
         pass
 

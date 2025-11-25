@@ -40,7 +40,7 @@ Currently loaded {len(self._agents)} agents:
 
     @staticmethod
     def create(args: Namespace) -> Simulator:
-        log().vprint("Passed arguments to simulator: ", args)
+        log().vprint("Passed arguments to simulator:\n", args)
         loader = ConfigLoader(args.problem)
 
         agents_data = loader.retrieve_data("agents")
