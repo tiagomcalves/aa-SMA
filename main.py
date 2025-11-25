@@ -4,6 +4,8 @@ from pathlib import Path
 
 from core.sim import Simulator
 from core.module_importer import import_agents
+import core.logger
+from core.logger import Logger
 
 def main():
 
@@ -36,10 +38,12 @@ def main():
 
     # got valid problem chosen, process optionals
 
-    if args.train or args.headless or args.train:
+    if args.train or args.headless:
         pass
 
     import_agents()
+    
+    Logger.initialize(args.verbose)
     sim = Simulator.create(args)
 
     if not args.autostart:
