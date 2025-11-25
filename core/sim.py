@@ -12,6 +12,7 @@ from core.env import Environment
 from abstract import *
 from component.sensor.sensor import Sensor
 from map.position import Position
+from core.logger import log
 
 
 @final
@@ -29,7 +30,7 @@ class Simulator:
 
     def _boot_output(self) -> None:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
-        print(
+        log().print(
 f"""------------------------------------------------
 Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
 
@@ -39,11 +40,11 @@ Currently loaded {len(self._agents)} agents:
 
     @staticmethod
     def create(args: Namespace) -> Simulator:
-        print(args)
+        log().vprint("Passed arguments to simulator: ", args)
         loader = ConfigLoader(args.problem)
 
         agents_data = loader.retrieve_data("agents")
-        pprint(agents_data)
+        log().vprint(agents_data)
         agents = []
         for a_key, a_data in agents_data.items():
             agents.append( Agent.create( a_key, a_data ))
@@ -82,7 +83,7 @@ Currently loaded {len(self._agents)} agents:
 
         while True:
 
-            print(conv)
+            log().print(conv)
 
             for a in self._agents:
                 a.act()
