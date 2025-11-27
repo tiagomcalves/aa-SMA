@@ -72,8 +72,16 @@ class Environment:
             log().vprint("on this position its a ", tile)
                          
             if tile in ("BOUNDARIE", "WALL"):
-                log().vprint("agent ", self._agent_data[agent].name, " was denied")
+                log().vprint("agent ", self._agent_data[agent].name, " was denied, collideable tile")
                 return
+
+            for o_agent, o_data in self._agent_data.items():
+                if o_agent is agent:
+                    continue
+                if o_data.pos == pos:
+                    log().vprint("agent ", self._agent_data[agent].name, " was denied, another agent occupying position")
+                    return
+
 
             self._agent_data.get(agent).pos = pos
             log().vprint("agent ", self._agent_data[agent].name, " moved")
