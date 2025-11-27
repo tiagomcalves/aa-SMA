@@ -46,7 +46,7 @@ class Map:
 
         map_cells: dict[Position, MapEntity] = \
             {
-                OUT_OF_BOUNDS: MapEntity("\0", "Boundarie", -9999.0, False, False, False)
+                OUT_OF_BOUNDS: MapEntity("\0", "Boundarie", -9999.0, False, False, False, True)
             }
 
         with open(path, "r") as f:
@@ -73,14 +73,14 @@ class Map:
 
         return True
 
-    def get_position_data(self, pos: Position) -> str:
+    def get_position_data(self, pos: Position) -> Union[MapEntity, None]:
         if not self._is_inbounds(pos):
-            return  self._map_cells[OUT_OF_BOUNDS].name.upper()
+            return  self._map_cells[OUT_OF_BOUNDS]
 
         if self._map_cells.get(pos):
-            return self._map_cells.get(pos).name.upper()
+            return self._map_cells.get(pos)
 
-        return "EMPTY"
+        return None
 
     def render(self, agent_positions: dict[Position, str]):
         for y in range(self._max_y):
@@ -88,13 +88,13 @@ class Map:
             for x in range(self._max_x):
 
                 pos = Position(x, y)
-                #print(f"[render] Position {pos}: {self._map_cells.get(pos)}")
+
+                if agent_positions.get(pos):
+                    row += _format_char(agent_positions.get(pos))
+                    continue
+
                 if not self._map_cells.get(pos) or self._map_cells.get(pos).draw == False:
-                    if agent_positions.get(pos):
-                        row += _format_char(agent_positions.get(pos))
-                        continue
-                    else:
-                        row += _format_char(_EMPTY_CELL)
+                    row += _format_char(_EMPTY_CELL)
                 else:
                     row += _format_char(self._map_cells.get(pos).char)
 

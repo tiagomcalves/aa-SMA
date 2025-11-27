@@ -17,11 +17,11 @@ class Handler(ABC):
 class SurroundingsHandler(Handler):
     def handle(self, agent_data:AgentData, env) -> Observation:
 
-        surroundings_payload = {Direction.NONE: env.get_data(agent_data.pos),
-                                Direction.UP: env.get_data(agent_data.pos + Direction.UP),
-                                Direction.DOWN: env.get_data(agent_data.pos + Direction.DOWN),
-                                Direction.LEFT: env.get_data(agent_data.pos + Direction.LEFT),
-                                Direction.RIGHT: env.get_data(agent_data.pos + Direction.RIGHT)}
+        surroundings_payload = {Direction.NONE: env.get_tile_as_str(agent_data.pos),
+                                Direction.UP: env.get_tile_as_str(agent_data.pos + Direction.UP),
+                                Direction.DOWN: env.get_tile_as_str(agent_data.pos + Direction.DOWN),
+                                Direction.LEFT: env.get_tile_as_str(agent_data.pos + Direction.LEFT),
+                                Direction.RIGHT: env.get_tile_as_str(agent_data.pos + Direction.RIGHT)}
 
         log().vprint("[Env] processing surroundings of ",agent_data.name,":", agent_data.pos)
 
