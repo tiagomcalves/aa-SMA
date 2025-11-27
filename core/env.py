@@ -1,3 +1,4 @@
+from typing import Optional
 from abstract.agent import Agent
 from abstract.nav2d import Navigator2D
 from component.action import Action
@@ -5,6 +6,7 @@ from component.observation import Observation
 from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
 from core.logger import log
+from core.renderer import Renderer
 from map.entity import AgentData
 from map.map import Map
 from map.position import Position
@@ -13,9 +15,13 @@ from map.position import Position
 class Environment:
 
     _agent_data: dict[Agent, AgentData]
+    renderer : Optional[Renderer] = None
 
-    def __init__(self, problem: str, data: dict):
+    def __init__(self, problem: str, data: dict, renderer=True):
         self._handlers = {}
+        if renderer == True:
+            self.renderer = Renderer()
+            
         self._map = Map(problem, data["map"], self)
 
     def register_handler(self, request_type: str):
