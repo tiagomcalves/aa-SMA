@@ -1,10 +1,10 @@
-from six import moves
-
-from abstract import Agent, Navigator2D
+from abstract.agent import Agent
+from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.observation import Observation
 from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
+from core.logger import log
 from map.entity import AgentData
 from map.map import Map
 from map.position import Position
@@ -67,12 +67,16 @@ class Environment:
             direction = action.params.get("direction")
             pos = self._agent_data[agent].pos + direction
 
+            log().vprint("agent ", self._agent_data[agent].name, " is at ", self._agent_data[agent].pos, " and is trying to move ", direction," to ", pos)
             tile = self.get_data(pos)
-            if tile is "WALL" or tile is "BOUNDARIE":
-                #denied
+            log().vprint("on this position its a ", tile)
+                         
+            if tile in ("BOUNDARIE", "WALL"):
+                log().vprint("agent ", self._agent_data[agent].name, " was denied")
                 return
 
             self._agent_data.get(agent).pos = pos
+            log().vprint("agent ", self._agent_data[agent].name, " moved")
 
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
