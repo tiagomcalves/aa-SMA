@@ -9,6 +9,7 @@ class MapEntity:
     remove_on_touch: bool
     custom: bool
     draw: bool
+    collideable: bool
 
 @dataclass(frozen=False)
 class AgentData:

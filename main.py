@@ -29,7 +29,6 @@ def main():
     parser.add_argument('-t', '--train', help='training mode', action='store_true')
     parser.add_argument('-v', '--verbose',help="enable verbose output", action='store_true')
 
-
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(1)

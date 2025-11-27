@@ -5,7 +5,7 @@ from component.observation import Observation
 from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
 from core.logger import log
-from map.entity import AgentData
+from map.entity import AgentData, MapEntity
 from map.map import Map
 from map.position import Position
 
@@ -58,8 +58,13 @@ class Environment:
     def get_agent_state(self):
         pass
 
-    def get_data(self, pos: Position) -> str:
+    def get_tile_data(self, pos: Position) -> MapEntity:
         return self._map.get_position_data(pos)
+
+    def get_tile_as_str(self, pos: Position) -> str:
+        if self._map.get_position_data(pos):
+            return self._map.get_position_data(pos).name.upper()
+        return "EMPTY"
 
     def validate_action(self, action: Action):
         if action.name == "move":
@@ -68,12 +73,14 @@ class Environment:
             pos = self._agent_data[agent].pos + direction
 
             log().vprint("agent ", self._agent_data[agent].name, " is at ", self._agent_data[agent].pos, " and is trying to move ", direction," to ", pos)
-            tile = self.get_data(pos)
-            log().vprint("on this position its a ", tile)
-                         
-            if tile in ("BOUNDARIE", "WALL"):
+            tile = self.get_tile_data(pos)
+            if tile is None:
+                log().vprint("this position is empty")
+            elif tile.collideable:
                 log().vprint("agent ", self._agent_data[agent].name, " was denied, collideable tile")
                 return
+            else:
+                log().vprint("on this position its a ", tile.name)
 
             for o_agent, o_data in self._agent_data.items():
                 if o_agent is agent:
@@ -81,7 +88,6 @@ class Environment:
                 if o_data.pos == pos:
                     log().vprint("agent ", self._agent_data[agent].name, " was denied, another agent occupying position")
                     return
-
 
             self._agent_data.get(agent).pos = pos
             log().vprint("agent ", self._agent_data[agent].name, " moved")
