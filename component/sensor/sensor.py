@@ -11,8 +11,7 @@ class Sensor:
     def get_info(self):
         pass
 
-    def get_surroundings(self, pos: Position) -> Observation:
-        request = Surroundings(pos)
-        return self.env.handle_request(request.to_dict())
+    def get_surroundings(self, agent) -> Observation:
+        return self.env.serve_data(agent)["surroundings"]
 
 

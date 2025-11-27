@@ -11,13 +11,11 @@ class Request(ABC):
         pass
 
 class Surroundings(Request):
-    def __init__(self, pos):
+    def __init__(self):
         super().__init__()
-        self.pos = pos
 
     def to_dict(self):
         return {
             "type": "surroundings",
-            "position": self.pos.get(),
             "timestamp": self.timestamp
         }

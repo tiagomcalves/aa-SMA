@@ -10,8 +10,8 @@ class Action:
     params: Dict[str, Any]
 
     @classmethod
-    def move(cls, vector: Direction):
-        return cls("move", {"direction":vector})
+    def move(cls, agent, vector: Direction):
+        return cls("move", { "agent": agent, "direction":vector})
 
     @classmethod
     def interact(cls, target_id: str ):
@@ -26,8 +26,8 @@ class Action:
         return cls("drop", {"item": item_id})
 
     @classmethod
-    def wait(cls):
-        return cls("wait", {})
+    def wait(cls, agent):
+        return cls("wait", agent)
 
 
 class ActionResponse(Enum):

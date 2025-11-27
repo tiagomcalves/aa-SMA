@@ -10,6 +10,7 @@ from component.sensor.sensor import Sensor
 class Agent(ABC):
 
     _registry = {}
+    _env : Environment
     _sensor : Sensor
     curr_observation : Optional[Observation] = None
     curr_action : Optional[Action] = None
@@ -40,9 +41,9 @@ class Agent(ABC):
         pass
 
     def has_observation(self) -> bool:
-        if not self.curr_observation == None:
-            return True
-        return False
+        if self.curr_observation is None:
+            return False
+        return True
 
     @abstractmethod
     def act(self) -> Action:
@@ -50,6 +51,12 @@ class Agent(ABC):
 
     def check_current_state(self, reward: float):
         pass
+
+    def set_env(self, env: Environment) -> None:
+        self._env = env
+
+    def get_env(self) -> Environment:
+        return self._env
 
     def install(self, sensor: Sensor) -> None:
         self._sensor = sensor
