@@ -2,7 +2,6 @@ from abc import abstractmethod
 
 from abstract import Agent
 from component.action import Action
-from component.direction import Direction
 from component.observation import Observation
 from map.position import Position
 
@@ -18,6 +17,9 @@ class Navigator2D(Agent):
 
     def get_position(self) -> Position:
         return self._position
+
+    def update_position(self, pos: Position):
+        self._position = pos
 
     #@abstractmethod
     #def move(self, direction: Direction) -> None:

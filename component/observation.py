@@ -1,6 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass
 from component.direction import Direction
+from core.logger import log
 
 
 class ObservationType(Enum):

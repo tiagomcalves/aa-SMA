@@ -1,7 +1,8 @@
 import json
 from typing import Union
 
-from map.entity import MapEntity, EntityPosition
+from abstract import Agent
+from map.entity import MapEntity, EntityPosition, AgentData
 from map.position import Position
 
 _EMPTY_CELL = " ."

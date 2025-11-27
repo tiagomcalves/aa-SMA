@@ -1,16 +1,18 @@
-from typing import Union
+from six import moves
 
-from abstract.agent import Agent
+from abstract import Agent, Navigator2D
 from component.action import Action
 from component.observation import Observation
 from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
-from map.entity import MapEntity
+from map.entity import AgentData
 from map.map import Map
 from map.position import Position
 
 
 class Environment:
+
+    _agent_data: dict[Agent, AgentData]
 
     def __init__(self, problem: str, data: dict):
         self._handlers = {}
@@ -23,6 +25,13 @@ class Environment:
         handler_instance = handler_cls()
         self._handlers[request_type] = handler_instance
 
+    @staticmethod
+    def setup_agent(name: str, data: dict) -> AgentData:
+        return AgentData(data["char"], name, Position(*data["starting_position"]), 0.0)
+
+    def register_agents(self, agents_dict: dict[Agent, AgentData]) -> None:
+        self._agent_data = agents_dict
+
     def send_observation(self, agent: Agent) -> Observation:
         pass
 
@@ -32,16 +41,44 @@ class Environment:
     def act(self, action: Action, agent: Agent):
         pass
 
-    def render(self, agent_positions: dict[Position, str]):
-        self._map.render(agent_positions)
+    def _pack_agents_positions(self) -> dict[Position, str]:
+        positions = {}
+
+        for agent, data in self._agent_data.items():
+            if not isinstance(agent, Navigator2D):
+                continue
+
+            positions[data.pos] = data.char
+
+        return positions
+
+    def render(self):
+        self._map.render(self._pack_agents_positions())
+
+    def get_agent_state(self):
+        pass
 
     def get_data(self, pos: Position) -> str:
         return self._map.get_position_data(pos)
 
-    def handle_request(self, request: dict) -> Observation:
-        req_type = request.get("type")
-        handler = self._handlers.get(req_type)
-        if handler:
-            return handler.handle(request, self)
-        else:
-            raise ValueError(f"No handler registered for request type '{req_type}'")
+    def validate_action(self, action: Action):
+        if action.name == "move":
+            agent = action.params.get("agent")
+            direction = action.params.get("direction")
+            pos = self._agent_data[agent].pos + direction
+
+            tile = self.get_data(pos)
+            if tile is "WALL" or tile is "BOUNDARIE":
+                #denied
+                return
+
+            self._agent_data.get(agent).pos = pos
+
+
+    def serve_data(self, agent: Agent) -> dict[str, Observation]:
+        sensor_data = {}
+
+        for handler in self._handlers:
+            sensor_data[handler] = self._handlers[handler].handle(self._agent_data[agent], self)
+
+        return sensor_data

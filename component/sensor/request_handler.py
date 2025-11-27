@@ -1,33 +1,30 @@
 from abc import ABC, abstractmethod
 
+from component.sensor import registry
 from core.logger import log
 from component.direction import Direction
 from component.observation import Observation, ObservationType
-from component.sensor.registry import register_handler, HANDLER_REGISTRY
+from map.entity import AgentData
 from map.position import Position
 
 
 class Handler(ABC):
     @abstractmethod
-    def handle(self, request: dict, env) -> dict:
+    def handle(self, agent_data:AgentData, env) -> dict:
         pass
 
-@register_handler("surroundings")
+@registry.register_handler("surroundings")
 class SurroundingsHandler(Handler):
-    def handle(self, request: dict, env) -> Observation:
-        pos = request["position"]
-        position = Position(pos[0], pos[1])
+    def handle(self, agent_data:AgentData, env) -> Observation:
 
-        surroundings_payload = {
-            "cells": {
-                "UP": env.get_data(position + Direction.UP),
-                "DOWN": env.get_data(position + Direction.DOWN),
-                "LEFT": env.get_data(position + Direction.LEFT),
-                "RIGHT": env.get_data(position + Direction.RIGHT)
-            }
-        }
+        surroundings_payload = {Direction.NONE: env.get_data(agent_data.pos),
+                                Direction.UP: env.get_data(agent_data.pos + Direction.UP),
+                                Direction.DOWN: env.get_data(agent_data.pos + Direction.DOWN),
+                                Direction.LEFT: env.get_data(agent_data.pos + Direction.LEFT),
+                                Direction.RIGHT: env.get_data(agent_data.pos + Direction.RIGHT)}
 
-        log().vprint("[Env] processing surroundings:", pos)
-        obs = Observation(ObservationType.SURROUNDINGS, surroundings_payload)
+        log().vprint("[Env] processing surroundings of ",agent_data.name,":", agent_data.pos)
+
+        obs = Observation(ObservationType.SURROUNDINGS,{"cells": surroundings_payload})
         return obs
 

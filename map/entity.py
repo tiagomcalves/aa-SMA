@@ -10,6 +10,12 @@ class MapEntity:
     custom: bool
     draw: bool
 
+@dataclass(frozen=False)
+class AgentData:
+    char: str
+    name: str
+    pos: Position
+    reward: float
 
 class EntityPosition:
 

@@ -1,15 +1,14 @@
 from __future__ import annotations
 from argparse import Namespace
-from pprint import pprint
 from typing import final
 import time
 
-import abstract
+from abstract import Agent
+from abstract.nav2d import Navigator2D
 from core.loader import ConfigLoader
 from core.module_importer import import_sensor_handlers
 from core.scheduler import Scheduler
 from core.env import Environment
-from abstract import *
 from component.sensor.sensor import Sensor
 from map.position import Position
 from core.logger import log
@@ -43,23 +42,32 @@ Currently loaded {len(self._agents)} agents:
         log().vprint("Passed arguments to simulator:\n", args)
         loader = ConfigLoader(args.problem)
 
-        agents_data = loader.retrieve_data("agents")
-        log().vprint(agents_data)
-        agents = []
-        for a_key, a_data in agents_data.items():
-            agents.append( Agent.create( a_key, a_data ))
+        agents_json_data = loader.retrieve_data("agents")
+        log().vprint(agents_json_data)
+
+        agents_ref_list = []
+        agents_env_dict = {}
+
+        for a_key, a_data in agents_json_data.items():
+            _new_agent = Agent.create( a_key, a_data )
+            agents_ref_list.append(_new_agent)
+            agents_env_dict[_new_agent] = Environment.setup_agent(a_key, a_data)
 
         import_sensor_handlers()
 
         env = Environment(args.problem, loader.retrieve_data("environment"))
+        env.register_agents(agents_env_dict)
+
         for handler in loader.retrieve_data("environment")["sensor_handlers"]:
             env.register_handler(handler)
 
         sensor = Sensor(env)
-        for agent in agents:
+
+        for agent in agents_ref_list:
+            agent.set_env(env)
             agent.install(sensor)
 
-        return Simulator(env, agents, args)
+        return Simulator(env, agents_ref_list, args)
 
     def _pack_agents_positions(self) -> dict[Position, str]:
         positions = {}
@@ -86,13 +94,12 @@ Currently loaded {len(self._agents)} agents:
             log().print(conv)
 
             for a in self._agents:
-                a.act()
-
-            #for a in self._agents:
-            #    a.has_observation()
+                action = a.act()
+                a.observation(a.use_sensor())
+                self._env.validate_action(action)
 
             if not self.args.headless:
-                self._env.render(self._pack_agents_positions())
+                self._env.render()
                 time.sleep(self._STEP_SECONDS)
 
             self.think()
