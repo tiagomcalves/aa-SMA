@@ -20,7 +20,6 @@ class Explorer(Navigator2D):
     def observation(self, obs: Observation):
         self.curr_observation = obs
         if obs.type == ObservationType.SURROUNDINGS:
-            print(f"{self.name} checks its surroundings and is astounded")
             log().print(obs.payload)
 
     def act(self) -> Action:
@@ -31,7 +30,6 @@ class Explorer(Navigator2D):
 
         if self.curr_observation.type == ObservationType.SURROUNDINGS:
             options = self.curr_observation.payload.cells
-            print("options: ", options)
             key = random.choice(list(options.keys()))
             return Action.move(self, key)
 

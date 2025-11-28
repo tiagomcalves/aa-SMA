@@ -1,5 +1,6 @@
 from __future__ import annotations
 from argparse import Namespace
+from sched import scheduler
 from typing import final
 import time
 
@@ -98,10 +99,13 @@ Currently loaded {len(self._agents)} agents:
                 a.observation(a.use_sensor())
                 self._env.validate_action(action)
 
+            log().print("-----------------------------------------------")
+            log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
             if not self.args.headless:
                 self._env.render()
                 time.sleep(self._STEP_SECONDS)
 
+            log().print("-----------------------------------------------")
             self.think()
 
 

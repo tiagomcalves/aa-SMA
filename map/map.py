@@ -99,4 +99,4 @@ class Map:
                     row += _format_char(self._map_cells.get(pos).char)
 
             print(row)
-        print("\n")
+        print("")
