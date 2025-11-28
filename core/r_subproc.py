@@ -12,9 +12,9 @@ def read_stdin(q):
 
 def main():
     root = tk.Tk()
-    root.title("Renderer Terminal")
+    root.title("MAS Renderer Terminal")
 
-    font = tkFont.Font(family="Courier", size=12)   #monospaced font
+    font = tkFont.Font(family="Courier", size=14)   #monospaced font
 
     text = tk.Text(
         root,
@@ -23,8 +23,8 @@ def main():
         insertbackground="white",
         font=font,
         wrap="none",
-        borderwidth=0,
-        highlightthickness=0
+        borderwidth=10,
+        highlightthickness=12
     )
     text.pack(expand=True, fill="both")
 
