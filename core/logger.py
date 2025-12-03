@@ -4,7 +4,7 @@ from typing import Optional
 class Logger:
     def __init__(self, verbose=False):
         self.verbose = verbose
-        print(f"Logger initialized {"--verbose" if verbose==True else ""}")
+        print(f"Logger initialized {'--verbose' if verbose==True else ''}")
     
     def print(self, *args, **kwargs) -> None:
         print(*args, **kwargs)
