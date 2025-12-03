@@ -82,6 +82,14 @@ class Map:
 
         return None
 
+    def get_entity_by_name(self, ent: str):
+        results = {}
+        for key, data in self._map_cells.items():
+            if data.name.upper() == ent:
+                results[key] = data
+
+        return results
+
     def render(self, agent_positions: dict[Position, str]):
         for y in range(self._max_y):
             row = ""
