@@ -68,7 +68,7 @@ class DirectionsHandler(Handler):
             elif oy - py > 0:
                 y_direction = Direction.DOWN
 
-            directions_payload = {x_direction, y_direction}
+            directions_payload = (x_direction, y_direction)
 
         log().vprint("[Env] processing directions of ",agent_data.name,":", agent_data.pos)
 

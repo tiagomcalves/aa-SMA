@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 from abstract import Agent
 from component.action import Action
-from component.observation import Observation
+from component.observation import Observation, ObservationType
 from map.position import Position
 
 class Navigator2D(Agent):
@@ -28,9 +28,11 @@ class Navigator2D(Agent):
     def get_char(self) -> str:
         return self._char
 
-    @abstractmethod
-    def use_sensor(self) -> Observation:
-        pass
+    def use_sensor(self) -> None:
+        curr_obs_bundle = self._sensor.get_info(self)
+        self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings} if curr_obs_bundle.surroundings is not None else {})
+        self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions} if curr_obs_bundle.directions is not None else {})
+        self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location} if curr_obs_bundle.location is not None else {})
 
     @abstractmethod
     def observation(self, obs: Observation):

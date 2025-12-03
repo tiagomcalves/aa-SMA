@@ -18,8 +18,8 @@ class Action:
         return cls("interact", {"target": target_id})
 
     @classmethod
-    def pick(cls):
-        return cls("pick", {})
+    def pick(cls, agent):
+        return cls("pick", {"agent": agent})
 
     @classmethod
     def drop(cls, item_id: str):
