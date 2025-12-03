@@ -1,25 +1,32 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from enum import auto, Enum
 from typing import Optional
 
 from core.logger import log
 from component.action import Action
-from component.observation import Observation
+from component.observation import Observation, ObservationType
 from component.sensor.sensor import Sensor
+
+class AgentState(Enum):
+    INITIALIZING = auto()
+    RUNNING = auto()
+    TERMINATED = auto()
 
 class Agent(ABC):
 
     _registry = {}
     _env : Environment
-    _sensor : Sensor
-    curr_observation : Optional[Observation] = None
-    curr_action : Optional[Action] = None
 
     @abstractmethod
     def __init__(self, name: str, properties: dict):
         self.name = name
         self.score = float(0.0)
         self.properties = properties
+        self.state = AgentState.INITIALIZING
+        self._sensor : Optional[Sensor] = None
+        self.curr_observations: dict[ObservationType, Observation] = {}
+        self.curr_action : Optional[Action] = None
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -40,8 +47,8 @@ class Agent(ABC):
     def observation(self, obs: Observation):
         pass
 
-    def has_observation(self) -> bool:
-        if self.curr_observation is None:
+    def has_observations(self) -> bool:
+        if not self.curr_observations:
             return False
         return True
 

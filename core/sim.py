@@ -5,6 +5,7 @@ from typing import final
 import time
 
 from abstract import Agent
+from abstract.agent import AgentState
 from abstract.nav2d import Navigator2D
 from core.loader import ConfigLoader
 from core.module_importer import import_sensor_handlers
@@ -50,6 +51,7 @@ Currently loaded {len(self._agents)} agents:
         agents_env_dict = {}
 
         for a_key, a_data in agents_json_data.items():
+            a_data["class"] = "phineas.Phineas" if args.train else "ferb.Ferb"
             _new_agent = Agent.create( a_key, a_data )
             agents_ref_list.append(_new_agent)
             agents_env_dict[_new_agent] = Environment.setup_agent(a_key, a_data)
@@ -87,19 +89,36 @@ Currently loaded {len(self._agents)} agents:
     def think(self) -> None:    # execute
         self._scheduler.step()
 
+    def terminate_agent(self, agent) -> bool:
+        if agent in self.list_agents():
+            self.list_agents().remove(agent)
+            log().print(agent.name, "terminated from Simulator")
+            return True
+        return False
+
     def run(self) -> None:
         conv = "conv-{}".format(int(time.time()))
+
+        for a in self._agents:
+            a.state = AgentState.RUNNING
 
         while True:
 
             log().print(conv)
 
+            for a in self._agents[:]:  # hard-copy to avoid undefined behavior
+                if a.state == AgentState.TERMINATED:
+                    self.terminate_agent(a)
+                    continue
+
+            if len(self._agents) == 0:
+                break
+
             for a in self._agents:
-                a.observation(a.use_sensor())
                 action = a.act()
                 self._env.validate_action(action)
 
-            log().print("-----------------------------------------------")
+            #log().print("-----------------------------------------------")
             log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
             if not self.args.headless:
                 self._env.render()
@@ -108,6 +127,7 @@ Currently loaded {len(self._agents)} agents:
             log().print("-----------------------------------------------")
             self.think()
 
+        log().print("Simulation terminated in", self._scheduler.curr_step(), "steps")
 
 if __name__ == "__main__":
     print("You should run this script through main.py")
