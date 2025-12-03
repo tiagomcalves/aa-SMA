@@ -14,8 +14,9 @@ class Explorer(Navigator2D):
         self._position = Position(*properties["starting_position"])
         self.char = properties["char"]
 
-    def use_sensor(self) -> Observation:
-        return self._sensor.get_surroundings(self)
+    def use_sensor(self) -> dict[str, Observation]:
+        #return self._sensor.get_surroundings(self)
+        return self._sensor.get_info(self)
 
     def observation(self, obs: Observation):
         self.curr_observation = obs
@@ -33,4 +34,4 @@ class Explorer(Navigator2D):
             key = random.choice(list(options.keys()))
             return Action.move(self, key)
 
-        return Action.wait()
+        return Action.wait(self)

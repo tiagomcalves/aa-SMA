@@ -19,3 +19,13 @@ class Surroundings(Request):
             "type": "surroundings",
             "timestamp": self.timestamp
         }
+
+class Directions(Request):
+    def __init__(self):
+        super().__init__()
+
+    def to_dict(self):
+        return {
+            "type": "directions",
+            "timestamp": self.timestamp
+        }

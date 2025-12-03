@@ -8,10 +8,14 @@ class Sensor:
     def __init__(self, env):
         self.env = env
 
-    def get_info(self):
-        pass
+    def get_info(self, agent) -> dict[str, Observation]:
+        return self.env.serve_data(agent)
+
 
     def get_surroundings(self, agent) -> Observation:
         return self.env.serve_data(agent)["surroundings"]
+
+    def get_direction(self, agent) -> Observation:
+        return self.env.serve_data(agent)["directions"]
 
 

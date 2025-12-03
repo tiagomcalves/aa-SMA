@@ -58,6 +58,9 @@ class Environment:
     def get_agent_state(self):
         pass
 
+    def get_objectives(self):
+        return self._map.get_entity_by_name("OBJECTIVE")
+
     def get_tile_data(self, pos: Position) -> MapEntity:
         return self._map.get_position_data(pos)
 

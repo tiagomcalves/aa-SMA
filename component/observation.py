@@ -5,6 +5,7 @@ from core.logger import log
 
 
 class ObservationType(Enum):
+    DIRECTION = "directions"
     SURROUNDINGS = "surroundings"
     STATUS = "status"
     LOCATION = "location"
@@ -28,9 +29,15 @@ class StatusPayload:
 class LocationPayload:
     distance: float
 
+@dataclass
+class GPSPayload:
+    direction: tuple[Direction, Direction]
+
+
 
 OBSERVATION_PAYLOADS = {
     ObservationType.SURROUNDINGS: SurroundingsPayload,
     ObservationType.STATUS: StatusPayload,
     ObservationType.LOCATION: LocationPayload,
+    ObservationType.DIRECTION: GPSPayload,
 }

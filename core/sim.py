@@ -95,8 +95,8 @@ Currently loaded {len(self._agents)} agents:
             log().print(conv)
 
             for a in self._agents:
-                action = a.act()
                 a.observation(a.use_sensor())
+                action = a.act()
                 self._env.validate_action(action)
 
             log().print("-----------------------------------------------")
