@@ -30,9 +30,16 @@ class Simulator:
 
     def _boot_output(self) -> None:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
+
+        steps_str = f" at {self.args.step} ms per step" if not self.args.train else ", step delays are disabled in training mode"
+        r_str = f"display simulation in {"separate renderer window" if self.args.renderer else "stdout"}"
+
         log().print(
 f"""------------------------------------------------
 Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
+
+Running in {"training" if self.args.train else "testing"} mode{steps_str}
+{ ("running headless" if self.args.headless else r_str) if not self.args.train else "running headless in training mode"}
 
 Currently loaded {len(self._agents)} agents: 
 {_agents_list}
@@ -50,14 +57,14 @@ Currently loaded {len(self._agents)} agents:
         agents_env_dict = {}
 
         for a_key, a_data in agents_json_data.items():
-            a_data["class"] = "phineas.Phineas" if args.train else "ferb.Ferb"
+            a_data["class"] = "ferb.Ferb" if args.train else "ferb.Ferb"
             _new_agent = Agent.create( a_key, a_data )
             agents_ref_list.append(_new_agent)
             agents_env_dict[_new_agent] = Environment.setup_agent(a_key, a_data)
 
         import_sensor_handlers()
 
-        env = Environment(args.problem, loader.retrieve_data("environment"))
+        env = Environment(args.problem, loader.retrieve_data("environment"), args.renderer)
         env.register_agents(agents_env_dict)
 
         for handler in loader.retrieve_data("environment")["sensor_handlers"]:
@@ -117,10 +124,10 @@ Currently loaded {len(self._agents)} agents:
                 action = a.act()
                 self._env.validate_action(action)
 
-            #log().print("-----------------------------------------------")
             log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
-            if not self.args.headless:
-                self._env.render()
+            if not self.args.train:
+                if not self.args.headless:
+                    self._env.render()
                 time.sleep(self._STEP_SECONDS)
 
             log().print("-----------------------------------------------")
