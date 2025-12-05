@@ -8,7 +8,7 @@ from component.action import Action
 from component.observation import Observation, ObservationType
 from component.sensor.sensor import Sensor
 
-class AgentState(Enum):
+class AgentStatus(Enum):
     INITIALIZING = auto()
     RUNNING = auto()
     TERMINATED = auto()
@@ -23,7 +23,7 @@ class Agent(ABC):
         self.name = name
         self.score = float(0.0)
         self.properties = properties
-        self.state = AgentState.INITIALIZING
+        self.state = AgentStatus.INITIALIZING
         self._sensor : Optional[Sensor] = None
         self.curr_observations: dict[ObservationType, Observation] = {}
         self.curr_action : Optional[Action] = None

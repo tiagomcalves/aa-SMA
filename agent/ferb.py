@@ -1,6 +1,6 @@
 import random
 
-from abstract.agent import AgentState
+from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
@@ -27,7 +27,7 @@ class Ferb(Navigator2D):
             self.temp_mem_moves.append(self.last_move.opposite())
 
         if obs.type == ObservationType.TERMINATE:
-            self.state = AgentState.TERMINATED
+            self.state = AgentStatus.TERMINATED
 
 
     def act(self) -> Action:
