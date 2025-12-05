@@ -4,7 +4,7 @@ from typing import final
 import time
 
 from abstract import Agent
-from abstract.agent import AgentState
+from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D
 from core.logger import log
 from core.loader import ConfigLoader
@@ -106,14 +106,14 @@ Currently loaded {len(self._agents)} agents:
         conv = "conv-{}".format(int(time.time()))
 
         for a in self._agents:
-            a.state = AgentState.RUNNING
+            a.state = AgentStatus.RUNNING
 
         while True:
 
             log().print(conv)
 
             for a in self._agents[:]:  # hard-copy to avoid undefined behavior
-                if a.state == AgentState.TERMINATED:
+                if a.state == AgentStatus.TERMINATED:
                     self.terminate_agent(a)
                     continue
 
