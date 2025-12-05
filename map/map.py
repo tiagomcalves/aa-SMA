@@ -92,7 +92,7 @@ class Map:
 
     def render(self, agent_positions: dict[Position, str]):
 
-        if self._env.renderer != None:
+        if self._env.renderer is not None:
             self._env.renderer.clear()
 
         for y in range(self._max_y):
@@ -110,10 +110,10 @@ class Map:
                 else:
                     row += _format_char(self._map_cells.get(pos).char)
 
-            if self._env.renderer == None:
+            if self._env.renderer is None:
                 print(row)
             else:
                 self._env.renderer.buffer(row)
 
-        print("") if self._env.renderer == None else self._env.renderer.draw()
+        print("") if self._env.renderer is None else self._env.renderer.draw()
 

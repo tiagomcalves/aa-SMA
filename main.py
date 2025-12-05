@@ -24,7 +24,7 @@ def main():
     # optional args
     parser.add_argument('-a', '--autostart', help='automatically start simulation', action='store_true')
     parser.add_argument('-r', '--renderer', help='renders board in separate process', action='store_true')
-    parser.add_argument('-l', '--headless', help='run without renderer (mutually exclusive with --renderer and --step)', action='store_true')
+    parser.add_argument('-l', '--headless', help='run without renderer (mutually exclusive with --renderer)', action='store_true')
     parser.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)',  type=int, metavar="ms")
     parser.add_argument('-t', '--train', help='training mode', action='store_true')
     parser.add_argument('-v', '--verbose',help="enable verbose output", action='store_true')
@@ -37,13 +37,12 @@ def main():
 
     # got valid problem chosen, process optionals
 
-    if args.headless and (args.renderer or args.step):
-        raise AttributeError("Error: --headless is mutualy exclusive with --renderer or --step")
+    print("headless: ",args.headless, "renderer: ", args.renderer, "step: ", args.step)
+
+    if args.headless and args.renderer:
+        raise AttributeError("Error: --headless and --renderer are mutually exclusive")
 
     Logger.initialize(args.verbose)
-
-    if args.train or args.headless:
-        pass
 
     import_agents()
     sim = Simulator.create(args)

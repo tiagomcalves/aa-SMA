@@ -21,7 +21,7 @@ class Environment:
 
     def __init__(self, problem: str, data: dict, renderer=True):
         self._handlers = {}
-        if renderer == True:
+        if renderer:
             self.renderer = Renderer()
 
         self._map = Map(problem, data["map"], self)
