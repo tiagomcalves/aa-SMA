@@ -1,19 +1,18 @@
 from __future__ import annotations
 from argparse import Namespace
-from sched import scheduler
 from typing import final
 import time
 
 from abstract import Agent
 from abstract.agent import AgentState
 from abstract.nav2d import Navigator2D
+from core.logger import log
 from core.loader import ConfigLoader
-from core.module_importer import import_sensor_handlers
 from core.scheduler import Scheduler
 from core.env import Environment
+from core.module_importer import import_sensor_handlers
 from component.sensor.sensor import Sensor
 from map.position import Position
-from core.logger import log
 
 
 @final

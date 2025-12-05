@@ -33,7 +33,6 @@ class Ferb(Navigator2D):
     def act(self) -> Action:
         if not self.has_observations():
             self.use_sensor()
-            #print(self.curr_observations)
             return Action.wait(self)
 
         obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
@@ -43,7 +42,7 @@ class Ferb(Navigator2D):
 
         mem_moves = self.temp_mem_moves  #reference, not a copy
 
-        print(f"{self.name} saved moves: {[str(move) for move in mem_moves]}")
+        log().vprint(f"{self.name} saved moves: {[str(move) for move in mem_moves]}")
 
         obs_direc = self.curr_observations.get(ObservationType.DIRECTION)
 

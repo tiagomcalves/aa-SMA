@@ -1,7 +1,4 @@
 from component.observation import Observation, ObservationBundle
-from component.sensor.request import Surroundings
-from map.position import Position
-
 
 class Sensor:
 

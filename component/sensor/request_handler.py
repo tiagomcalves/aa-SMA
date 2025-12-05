@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
 
-from component.sensor import registry
 from core.logger import log
+from component.sensor import registry
 from component.direction import Direction
 from component.observation import Observation, ObservationType
 from map.entity import AgentData
-from map.position import Position
 
 
 class Handler(ABC):

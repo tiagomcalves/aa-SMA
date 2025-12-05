@@ -4,7 +4,6 @@ from pathlib import Path
 
 from core.sim import Simulator
 from core.module_importer import import_agents
-import core.logger
 from core.logger import Logger
 
 def main():

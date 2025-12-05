@@ -1,5 +1,5 @@
-from .onto_loader import *
-from .sparql_helper import *
-from .fipa_acl_proto import *
+#from .onto_loader import *
+#from .sparql_helper import *
+#from .fipa_acl_proto import *
 
-__all__ = ["load_onto", "sparql_query", "AgentMessage" ]
+__all__ = []
