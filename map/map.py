@@ -91,6 +91,10 @@ class Map:
         return results
 
     def render(self, agent_positions: dict[Position, str]):
+
+        if self._env.renderer != None:
+            self._env.renderer.clear()
+
         for y in range(self._max_y):
             row = ""
             for x in range(self._max_x):
@@ -106,5 +110,10 @@ class Map:
                 else:
                     row += _format_char(self._map_cells.get(pos).char)
 
-            print(row)
-        print("")
+            if self._env.renderer == None:
+                print(row)
+            else:
+                self._env.renderer.buffer(row)
+
+        print("") if self._env.renderer == None else self._env.renderer.draw()
+

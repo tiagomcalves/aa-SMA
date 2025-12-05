@@ -1,7 +1,9 @@
 import argparse
 import sys
+import time
 from pathlib import Path
 
+from core.renderer import Renderer
 from core.sim import Simulator
 from core.module_importer import import_agents
 from core.logger import Logger
@@ -19,12 +21,11 @@ def main():
     # required arg
     parser.add_argument('problem',choices=subdirs, help='simulation problem')
 
-    mutex_group = parser.add_mutually_exclusive_group()
-
     # optional args
     parser.add_argument('-a', '--autostart', help='automatically start simulation', action='store_true')
-    mutex_group.add_argument('-l', '--headless', help='run without renderer (mutually exclusive with --step)', action='store_true')
-    mutex_group.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)', type=int, metavar="ms")
+    parser.add_argument('-r', '--renderer', help='renders board in separate process', action='store_true')
+    parser.add_argument('-l', '--headless', help='run without renderer (mutually exclusive with --renderer and --step)', action='store_true')
+    parser.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)',  type=int, metavar="ms")
     parser.add_argument('-t', '--train', help='training mode', action='store_true')
     parser.add_argument('-v', '--verbose',help="enable verbose output", action='store_true')
 
@@ -35,6 +36,9 @@ def main():
     args = parser.parse_args()
 
     # got valid problem chosen, process optionals
+
+    if args.headless and (args.renderer or args.step):
+        raise AttributeError("Error: --headless is mutualy exclusive with --renderer or --step")
 
     Logger.initialize(args.verbose)
 
