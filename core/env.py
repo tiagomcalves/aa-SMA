@@ -8,7 +8,7 @@ from component.sensor.registry import HANDLER_REGISTRY
 from component.sensor.request_handler import Handler
 from core.logger import log
 from map.entity import AgentData, MapEntity
-from core.renderer import Renderer
+from core.renderer.r_handle import Renderer
 from map.entity import AgentData
 from map.map import Map
 from map.position import Position
