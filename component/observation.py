@@ -4,6 +4,8 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
 
+from pywin.mfc.object import Object
+
 from component.action import Action
 from component.direction import Direction
 
@@ -119,3 +121,12 @@ class ObservationBundle:
             directions=obs_dict.get("directions"),
             location=obs_dict.get("location"),
         )
+
+    def unpack(self, obs_type: ObservationType) -> dict|object|None:
+        if obs_type == ObservationType.SURROUNDINGS and self.surroundings is not None:
+            return self.surroundings.payload.cells
+        elif obs_type == ObservationType.DIRECTION and self.directions is not None:
+            return self.directions.payload.direction
+        elif obs_type == ObservationType.LOCATION and self.location is not None:
+            return self.location.payload.distance
+        return None

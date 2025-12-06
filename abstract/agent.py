@@ -21,7 +21,7 @@ class Agent(ABC):
     _env : Environment
 
     @abstractmethod
-    def __init__(self, name: str, properties: dict):
+    def __init__(self, problem: str, name: str, properties: dict):
         self.name = name
         self.score = float(0.0)
         self.properties = properties
@@ -29,7 +29,7 @@ class Agent(ABC):
         self._sensor : Optional[Sensor] = None
         self.curr_observations: dict[ObservationType, Observation] = {}
         self.curr_action : Optional[Action] = None
-        self.state = State()
+        self.state = State(problem, name)
         self.action = ActionBuilder(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -37,12 +37,12 @@ class Agent(ABC):
         Agent._registry[cls.__name__] = cls #automatically register subclass by its class name
 
     @classmethod
-    def create(cls, name: str, data: dict) -> Agent:
+    def create(cls, problem: str, name: str, data: dict) -> Agent:
         log().vprint(f"create( name: \"{name}\", data: {data} ))")
         full_class_str = data["class"]
         module_name, class_name = full_class_str.rsplit(".", 1)
         sub_cls = Agent._registry[class_name]
-        return sub_cls(name, data)
+        return sub_cls(problem, name, data)
 
     def get_name(self) -> str:
         return self.name

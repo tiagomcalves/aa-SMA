@@ -11,8 +11,8 @@ from map.position import Position
 
 class Ferb(Navigator2D):
 
-    def __init__(self, name: str, properties: dict):
-        super().__init__(name, properties)
+    def __init__(self, problem: str, name: str, properties: dict):
+        super().__init__(problem, name, properties)
         self._position = Position(*properties["starting_position"])
         self.char = properties["char"]
         self.temp_mem_moves = []
@@ -37,10 +37,9 @@ class Ferb(Navigator2D):
             action = obs.payload
             # AcceptedPayload(action=Action(name='move', agent=<agent.ferb.Ferb object at 0x0000024E6B655F70>, params={'direction': <RIGHT>}), reward=1.0)
             reward = obs.payload.reward
-            self.last_move = action.action.params.get("direction")
             self.temp_mem_moves.append(self.last_move.opposite())
 
-        self.state.save_current_state()
+        self.state.log_state()
 
     def act(self) -> Action:
         if not self.has_observations():
