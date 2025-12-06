@@ -20,25 +20,36 @@ class Ferb(Navigator2D):
         self.last_move = Direction.NONE
 
     def observation(self, obs: Observation):
-        if obs.type == ObservationType.ACCEPTED_MOVE:
-            self.curr_observations.clear()
-            self.temp_mem_moves.clear()
-            self.last_move = obs.payload.direction
-            self.temp_mem_moves.append(self.last_move.opposite())
+        if obs.type == ObservationType.NONE:
+            self.use_sensor()
+            return
 
         if obs.type == ObservationType.TERMINATE:
-            self.state = AgentStatus.TERMINATED
+            self.status = AgentStatus.TERMINATED
+            self.state.set_final_state()
 
+        elif obs.type == ObservationType.DENIED:
+            self.state.update_sensor_data()
+
+        elif obs.type == ObservationType.ACCEPTED:
+            self.curr_observations.clear()
+            self.temp_mem_moves.clear()
+            action = obs.payload
+            # AcceptedPayload(action=Action(name='move', agent=<agent.ferb.Ferb object at 0x0000024E6B655F70>, params={'direction': <RIGHT>}), reward=1.0)
+            reward = obs.payload.reward
+            self.last_move = action.action.params.get("direction")
+            self.temp_mem_moves.append(self.last_move.opposite())
+
+        self.state.save_current_state()
 
     def act(self) -> Action:
         if not self.has_observations():
-            self.use_sensor()
-            return Action.wait(self)
+            self.observation(Observation.none())
 
         obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
 
         if obs_surr and obs_surr.payload.cells[Direction.NONE] == "OBJECTIVE":
-            return Action.pick(self)
+            return self.action.pick()
 
         mem_moves = self.temp_mem_moves  #reference, not a copy
 
@@ -50,11 +61,11 @@ class Ferb(Navigator2D):
             x_direc, y_direc = obs_direc.payload.direction
             if x_direc not in mem_moves:
                 mem_moves.append(x_direc)
-                return Action.move(self, x_direc)
+                return self.action.move(x_direc)
 
             if y_direc not in mem_moves:
                 mem_moves.append(y_direc)
-                return Action.move(self, y_direc)
+                return self.action.move(y_direc)
 
         if obs_surr:
 
@@ -64,6 +75,6 @@ class Ferb(Navigator2D):
                     break
 
             mem_moves.append(option)
-            return Action.move(self, option)
+            return self.action.move(option)
 
-        return Action.wait(self)
+        return self.action.wait()

@@ -30,6 +30,7 @@ class Navigator2D(Agent):
 
     def use_sensor(self) -> None:
         curr_obs_bundle = self._sensor.get_info(self)
+        self.state.update_sensor_data(True, curr_obs_bundle)
         self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings} if curr_obs_bundle.surroundings is not None else {})
         self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions} if curr_obs_bundle.directions is not None else {})
         self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location} if curr_obs_bundle.location is not None else {})

@@ -36,9 +36,6 @@ def main():
     args = parser.parse_args()
 
     # got valid problem chosen, process optionals
-
-    print("headless: ",args.headless, "renderer: ", args.renderer, "step: ", args.step)
-
     if args.headless and args.renderer:
         raise AttributeError("Error: --headless and --renderer are mutually exclusive")
 

@@ -44,14 +44,16 @@ class Environment:
         log().print(f"Env: remove agent {agent.name}")
         self._agent_data.pop(agent)
 
-    def send_observation(self, agent: Agent, obs_type: ObservationType, payload = None) -> Observation:
-        obs = Observation(obs_type, payload)
+    def send_observation(self, agent: Agent, obs: Observation) -> Observation:
         agent.observation(obs)
 
         if obs.type == ObservationType.TERMINATE:
             self.remove_agent(agent)
 
         return obs
+
+    def calculate_reward(self, agent: Agent, action: Action, obs_type: ObservationType):
+        pass
 
     def update(self):
         pass
@@ -89,11 +91,11 @@ class Environment:
 
     def validate_action(self, action: Action):
         if action.name == "move":
-            agent = action.params.get("agent")
+            agent = action.agent
             direction = action.params.get("direction")
             if direction == Direction.NONE:
                 log().vprint("agent ", self._agent_data[agent].name, " is choosing to stand still, punished")
-                self.send_observation(agent, ObservationType.DENIED)
+                self.send_observation(agent, Observation.denied(action, -1.0))
                 return
 
             pos = self._agent_data[agent].pos + direction
@@ -104,7 +106,7 @@ class Environment:
                 log().vprint("this position is empty")
             elif tile.collideable:
                 log().vprint("agent ", self._agent_data[agent].name, " was denied, collideable tile")
-                self.send_observation(agent, ObservationType.DENIED)
+                self.send_observation(agent, Observation.denied(action, -0.5))
                 return
             else:
                 log().vprint("on this position its a ", tile.name)
@@ -114,28 +116,28 @@ class Environment:
                     continue
                 if o_data.pos == pos:
                     log().vprint("agent ", self._agent_data[agent].name, " was denied, another agent occupying position")
-                    self.send_observation(agent, ObservationType.DENIED)
+                    self.send_observation(agent, Observation.denied(action, 0.0))
                     return
 
             self._agent_data.get(agent).pos = pos
             log().vprint("agent ", self._agent_data[agent].name, " moved")
-            self.send_observation(agent, ObservationType.ACCEPTED_MOVE, {"direction": direction})
+            self.send_observation(agent, Observation.accepted(action, 1.0))
             return
 
         if action.name == "pick":
-            self.agent_pick(action.params.get("agent"))
+            self.agent_pick(action)
             return
 
-    def agent_pick(self, agent):
+    def agent_pick(self, action):
         # check if agent picked something important
-        tile = self.get_tile_data(self._agent_data[agent].pos)
+        tile = self.get_tile_data(self._agent_data[action.agent].pos)
         if tile is None:
-            self.send_observation(agent, ObservationType.DENIED)
+            self.send_observation(action.agent, Observation.none())
             return
 
-        print(f"env: {agent.name} is trying to pick tile {tile.name}")
+        print(f"env: {action.agent.name} is trying to pick tile {tile.name}")
         if tile.name.upper() == "OBJECTIVE":
-            self.send_observation(agent, ObservationType.TERMINATE)
+            self.send_observation(action.agent, Observation.terminate(action, 100.0))
             return
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:

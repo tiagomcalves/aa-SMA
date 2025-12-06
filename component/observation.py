@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
+
+from component.action import Action
 from component.direction import Direction
 
 
 class ObservationType(Enum):
-    ACCEPTED_MOVE = "accepted_move"
+    NONE = "none"
     DIRECTION = "directions"
     SURROUNDINGS = "surroundings"
     STATUS = "status"
@@ -14,15 +18,48 @@ class ObservationType(Enum):
     ACCEPTED = "accepted"
     TERMINATE = "terminate"
 
-class Observation:
-    def __init__(self, o_type: ObservationType, payload: dict | None = None):
-        payload_class = OBSERVATION_PAYLOADS.get(o_type)
-        if payload_class:
-            self.payload = payload_class(**(payload or {}))
-        else:
-            self.payload = None
-        self.type = o_type
 
+class Observation:
+    def __init__(self, o_type: ObservationType, payload: dict | object | None = None):
+        self.type = o_type
+        payload_class = OBSERVATION_PAYLOADS.get(o_type)
+
+        if payload is None:
+            self.payload = None
+        elif isinstance(payload, dict):
+            self.payload = payload_class(**payload) if payload_class else payload
+        elif payload_class is not None and isinstance(payload, payload_class):
+            self.payload = payload
+        else:
+            raise TypeError(f"payload must be dict or {payload_class} instance, got {type(payload)}")
+
+    @classmethod
+    def none(cls):
+        return cls(ObservationType.NONE, None)
+
+    @classmethod
+    def denied(cls, action: Action = None, reward: float = None, payload: dict | DeniedPayload | None = None):
+        if payload is not None:
+            return cls(ObservationType.DENIED, payload)
+        if action is None or reward is None:
+            raise ValueError("action and reward are required when payload is not provided")
+        return cls(ObservationType.DENIED, {"action": action, "reward": reward})
+
+    @classmethod
+    def accepted(cls, action: Action = None, reward: float = None, payload: dict | AcceptedPayload | None = None):
+        if payload is not None:
+            return cls(ObservationType.ACCEPTED, payload)
+        if action is None or reward is None:
+            raise ValueError("action and reward are required when payload is not provided")
+        return cls(ObservationType.ACCEPTED, {"action": action, "reward": reward})
+
+    @classmethod
+    def terminate(cls, action: Action = None, reward: float = None, payload: dict | AcceptedPayload | None = None):
+        if payload is not None:
+            return cls(ObservationType.TERMINATE, payload)
+        if action is None or reward is None:
+            raise ValueError("action and reward are required when payload is not provided")
+        return cls(ObservationType.TERMINATE, {"action": action, "reward": reward})
 
 @dataclass
 class SurroundingsPayload:
@@ -38,10 +75,12 @@ class AcceptedMovePayload:
 
 @dataclass
 class AcceptedPayload:
+    action: Action
     reward: float
 
 @dataclass
 class DeniedPayload:
+    action: Action
     reward: float
 
 @dataclass
@@ -56,15 +95,15 @@ class GPSPayload:
 class EmptyPayload:
     pass
 
+
 OBSERVATION_PAYLOADS = {
     ObservationType.SURROUNDINGS: SurroundingsPayload,
     ObservationType.STATUS: StatusPayload,
     ObservationType.LOCATION: LocationPayload,
     ObservationType.DIRECTION: GPSPayload,
-    ObservationType.DENIED: EmptyPayload,
-    ObservationType.ACCEPTED: EmptyPayload,
-    ObservationType.ACCEPTED_MOVE: AcceptedMovePayload,
-    ObservationType.TERMINATE: EmptyPayload,
+    ObservationType.DENIED: DeniedPayload,
+    ObservationType.ACCEPTED: AcceptedPayload,
+    ObservationType.TERMINATE: AcceptedPayload,
 }
 
 @dataclass
