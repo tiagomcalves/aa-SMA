@@ -41,7 +41,7 @@ class Simulator:
 
         for a_key, a_data in agents_json_data.items():
             a_data["class"] = "ferb.Ferb" if args.train else "ferb.Ferb"
-            _new_agent = Agent.create( a_key, a_data )
+            _new_agent = Agent.create(args.problem, a_key, a_data )
             agents_ref_list.append(_new_agent)
             agents_env_dict[_new_agent] = Environment.setup_agent(a_key, a_data)
 

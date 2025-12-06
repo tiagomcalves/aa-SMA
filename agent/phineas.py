@@ -9,8 +9,8 @@ from map.position import Position
 
 class Phineas(Navigator2D):
 
-    def __init__(self, name: str, properties: dict):
-        super().__init__(name, properties)
+    def __init__(self, problem: str, name: str, properties: dict):
+        super().__init__(problem, name, properties)
         self._position = Position(*properties["starting_position"])
         self.char = properties["char"]
 

@@ -11,8 +11,8 @@ class Navigator2D(Agent):
     _char : str
 
     @abstractmethod
-    def __init__(self, name: str, properties: dict):
-        super().__init__(name, properties)
+    def __init__(self, problem: str, name: str, properties: dict):
+        super().__init__(problem, name, properties)
         self._char = properties["char"]
 
     def get_position(self) -> Position:
