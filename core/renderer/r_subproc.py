@@ -1,4 +1,3 @@
-# core/renderer.py
 import tkinter as tk
 import tkinter.font as tkFont
 import threading

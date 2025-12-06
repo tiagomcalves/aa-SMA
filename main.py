@@ -3,7 +3,7 @@ import sys
 import time
 from pathlib import Path
 
-from core.renderer import Renderer
+from core.renderer.r_handle import Renderer
 from core.sim import Simulator
 from core.module_importer import import_agents
 from core.logger import Logger

@@ -3,7 +3,7 @@ import subprocess
 class Renderer:
     def __init__(self):
         self._p = subprocess.Popen(
-            ["python", "core/r_subproc.py"],
+            ["python", "core/renderer/r_subproc.py"],
             stdin=subprocess.PIPE,
             text=True,
             bufsize=1
