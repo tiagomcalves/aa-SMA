@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from enum import auto, Enum
 from typing import Optional
 
+from abstract.utils.action_builder import ActionBuilder
+from abstract.utils.state import State
 from core.logger import log
 from component.action import Action
 from component.observation import Observation, ObservationType
@@ -23,10 +25,12 @@ class Agent(ABC):
         self.name = name
         self.score = float(0.0)
         self.properties = properties
-        self.state = AgentStatus.INITIALIZING
+        self.status = AgentStatus.INITIALIZING
         self._sensor : Optional[Sensor] = None
         self.curr_observations: dict[ObservationType, Observation] = {}
         self.curr_action : Optional[Action] = None
+        self.state = State()
+        self.action = ActionBuilder(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)

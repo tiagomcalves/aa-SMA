@@ -1,34 +1,19 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, Any
+from typing import Any, Dict, TYPE_CHECKING
 
-from component.direction import Direction
+if TYPE_CHECKING:
+    from abstract.agent import Agent
 
 @dataclass
 class Action:
     name: str
+    agent: "Agent"
     params: Dict[str, Any]
 
-    @classmethod
-    def move(cls, agent, vector: Direction):
-        return cls("move", { "agent": agent, "direction":vector})
-
-    @classmethod
-    def interact(cls, target_id: str ):
-        return cls("interact", {"target": target_id})
-
-    @classmethod
-    def pick(cls, agent):
-        return cls("pick", {"agent": agent})
-
-    @classmethod
-    def drop(cls, item_id: str):
-        return cls("drop", {"item": item_id})
-
-    @classmethod
-    def wait(cls, agent):
-        return cls("wait", agent)
-
+    def __post_init__(self):
+        print(f"created action {self.name} by {self.agent} with params {self.params}")
+        self.agent.state.update_action_taken(self)
 
 class ActionResponse(Enum):
     def _generate_next_value_(name, start, count, last_values):

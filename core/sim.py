@@ -28,23 +28,6 @@ class Simulator:
         self._curr_time = time.time()
         self._boot_output()
 
-    def _boot_output(self) -> None:
-        _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
-
-        steps_str = f" at {self.args.step} ms per step" if not self.args.train else ", step delays are disabled in training mode"
-        r_str = f"display simulation in {"separate renderer window" if self.args.renderer else "stdout"}"
-
-        log().print(
-f"""------------------------------------------------
-Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
-
-Running in {"training" if self.args.train else "testing"} mode{steps_str}
-{ ("running headless" if self.args.headless else r_str) if not self.args.train else "running headless in training mode"}
-
-Currently loaded {len(self._agents)} agents: 
-{_agents_list}
-------------------------------------------------""")
-
     @staticmethod
     def create(args: Namespace) -> Simulator:
         log().vprint("Passed arguments to simulator:\n", args)
@@ -106,14 +89,14 @@ Currently loaded {len(self._agents)} agents:
         conv = "conv-{}".format(int(time.time()))
 
         for a in self._agents:
-            a.state = AgentStatus.RUNNING
+            a.status = AgentStatus.RUNNING
 
         while True:
 
             log().print(conv)
 
             for a in self._agents[:]:  # hard-copy to avoid undefined behavior
-                if a.state == AgentStatus.TERMINATED:
+                if a.status == AgentStatus.TERMINATED:
                     self.terminate_agent(a)
                     continue
 
@@ -134,6 +117,31 @@ Currently loaded {len(self._agents)} agents:
             self.think()
 
         log().print("Simulation terminated in", self._scheduler.curr_step(), "steps")
+
+#   -------------------------------------------------------------------
+
+    def _boot_output(self) -> None:
+        _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
+
+        steps_str = f" at {self.args.step} ms per step" if not self.args.train else ", step delays are disabled in training mode"
+        r_str = f"display simulation in {"separate renderer window" if self.args.renderer else "stdout"}"
+
+        log().print(
+f"""------------------------------------------------
+Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
+
+Running in {"training" if self.args.train else "testing"} mode{steps_str}
+{ ("running headless" if self.args.headless else r_str) if not self.args.train else "running headless in training mode"}
+
+Currently loaded {len(self._agents)} agents: 
+{_agents_list}""")
+        if not self.args.train and not self.args.headless:
+            if not self.args.renderer:
+                log().print("\nInitial State:")
+            self._env.render()
+        log().print("------------------------------------------------")
+
+#   -------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("You should run this script through main.py")
