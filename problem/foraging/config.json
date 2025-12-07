@@ -1,0 +1,24 @@
+{
+  "environment": {
+    "sensor_handlers": ["surroundings", "directions"],
+    "map": {
+      "file": "foraging_map",
+      "boundaries": [10, 10]
+    }
+  },
+
+  "agents": {
+    "Phineas_The_Worker": {
+      "starting_position": [1, 1],
+      "char": "P",
+      "learning_rate": 0.1,
+      "discount_factor": 0.9,
+      "epsilon": 0.1
+    },
+
+    "Ferb_The_Helper": {
+      "starting_position": [1, 2],
+      "char": "F"
+    }
+  }
+}

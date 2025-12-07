@@ -1,64 +1,65 @@
 from __future__ import annotations
-
-from numpy.ma.core import true_divide
-
 from component.direction import Direction
 
 
 class Position:
-
-    _pos : tuple[int, int]
+    # Constante estática inicializada no fundo do ficheiro
+    OUT_OF_BOUNDS = None
 
     def __init__(self, x: int, y: int):
-        self._pos = (x,y)
+        self._pos = (x, y)
 
+    @property
+    def x(self):
+        return self._pos[0]
+
+    @property
+    def y(self):
+        return self._pos[1]
+
+    def get(self) -> tuple[int, int]:
+        return self._pos
+
+    # --- O CORAÇÃO DO PROBLEMA (HASH e EQ) ---
     def __hash__(self):
+        # Garante que Position(1,1) tem sempre o mesmo ID de hash
         return hash(self._pos)
 
     def __eq__(self, other):
-        _other = other.get()
-        return self._pos[0] == _other[0] and self._pos[1] == _other[1]
+        # Garante que Position(1,1) == Position(1,1)
+        if isinstance(other, Position):
+            return self._pos == other._pos
+        if isinstance(other, tuple):
+            return self._pos == other
+        return False
+
+    # ------------------------------------------
 
     def __add__(self, other):
+        dx, dy = 0, 0
         if isinstance(other, Position):
-            (ox, oy) = other.get()
+            dx, dy = other.x, other.y
         elif isinstance(other, Direction):
-            (ox, oy) = other.value
-        else:
-            return NotImplemented
+            # Tenta obter valor do Enum, ou usa o próprio se for tuplo
+            val = other.value if hasattr(other, 'value') else other
+            dx, dy = val
+        elif isinstance(other, tuple):
+            dx, dy = other
 
-        return Position(self._pos[0] + ox, self._pos[1] + oy)
+        return Position(self.x + dx, self.y + dy)
 
-    def __radd__(self, other):
-        return self.__add__(other)
-
-    def get(self) -> tuple[int,int]:
-        return self._pos
-
-    def set(self, x: int, y: int) -> None:
-        self._pos = (x, y)
-
-    def move(self, x:int, y:int):
-        self._pos = (self._pos[0] + x, self._pos[1] + y)
-
-    def get_from_direction(self, direction:Direction) -> Position:
-        return self + direction
-
-    def is_strictly_less_than(self, other:Position) -> bool:
-        other_t = other.get()
-        if self._pos[0] < other_t[0] and self._pos[1] < other_t[1]:
-            return True
-        return False
+    def is_strictly_less_than(self, other: Position) -> bool:
+        return self.x < other.x and self.y < other.y
 
     def has_negative_coord(self) -> bool:
-        if self.get()[0] < 0 or self.get()[1] < 0:
-            return True
-        return False
+        return self.x < 0 or self.y < 0
 
     def __str__(self):
-        return f"({self._pos[0]},{self._pos[1]})"
+        return f"({self.x}, {self.y})"
+
+    def __repr__(self):
+        return self.__str__()
 
 
-# Invalid position instance
-Position.OUT_OF_BOUNDS = super(Position, Position).__new__(Position)
-Position.OUT_OF_BOUNDS._pos = (-1, -1)
+# Inicialização segura
+Position.OUT_OF_BOUNDS = Position(-1, -1)
