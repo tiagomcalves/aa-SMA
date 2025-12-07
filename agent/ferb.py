@@ -1,6 +1,4 @@
 import random
-
-from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
@@ -15,65 +13,78 @@ class Ferb(Navigator2D):
         super().__init__(problem, name, properties)
         self._position = Position(*properties["starting_position"])
         self.char = properties["char"]
-        self.temp_mem_moves = []
-        self.visited_positions = []
+        self.temp_mem_moves = []  # Memória de curto prazo para não andar aos círculos
         self.last_move = Direction.NONE
+        self.carrying = False
+        self.last_attempted_action = None
 
     def observation(self, obs: Observation):
-        if obs.type == ObservationType.NONE:
-            self.use_sensor()
-            return
+        if obs.type == ObservationType.ACCEPTED:
+            # Atualiza estado de carga
+            if self.last_attempted_action:
+                if self.last_attempted_action.name == "pick":
+                    self.carrying = True
+                elif self.last_attempted_action.name == "drop":
+                    self.carrying = False
 
-        if obs.type == ObservationType.TERMINATE:
-            self.status = AgentStatus.TERMINATED
-            self.state.set_final_state()
+            # Adiciona o movimento oposto à memória para evitar voltar para trás imediatamente
+            if self.last_move != Direction.NONE:
+                self.temp_mem_moves.append(self.last_move.opposite())
+                # Mantém a memória curta (últimos 4 movimentos)
+                if len(self.temp_mem_moves) > 4:
+                    self.temp_mem_moves.pop(0)
 
         elif obs.type == ObservationType.DENIED:
-            self.state.update_sensor_data()
-
-        elif obs.type == ObservationType.ACCEPTED:
-            self.curr_observations.clear()
+            # Se bateu, limpa a memória para tentar outros caminhos
             self.temp_mem_moves.clear()
-            action = obs.payload
-            # AcceptedPayload(action=Action(name='move', agent=<agent.ferb.Ferb object at 0x0000024E6B655F70>, params={'direction': <RIGHT>}), reward=1.0)
-            reward = obs.payload.reward
-            self.temp_mem_moves.append(self.last_move.opposite())
-
-        self.state.log_state()
 
     def act(self) -> Action:
         if not self.has_observations():
-            self.observation(Observation.none())
+            # Força update dos sensores se não tiver dados
+            obs = self._sensor.get_info(self)
+            self.state.update_sensor_data(True, obs)
+            self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
+            self.curr_observations[ObservationType.LOCATION] = obs.location
 
+        # 1. INSTINTO (Prioridade Máxima)
+        obs_loc = self.curr_observations.get(ObservationType.LOCATION)
+        if obs_loc:
+            tile = getattr(obs_loc.payload, 'tile_name', "").upper()
+            if not self.carrying and tile in ["FOOD", "RESOURCE"]:
+                act = self.action.pick();
+                self.last_attempted_action = act;
+                return act
+            if self.carrying and tile == "NEST":
+                act = self.action.drop();
+                self.last_attempted_action = act;
+                return act
+
+        # 2. MOVIMENTO
         obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
-
-        if obs_surr and obs_surr.payload.cells[Direction.NONE] == "OBJECTIVE":
-            return self.action.pick()
-
-        mem_moves = self.temp_mem_moves  #reference, not a copy
-
-        log().vprint(f"{self.name} saved moves: {[str(move) for move in mem_moves]}")
-
-        obs_direc = self.curr_observations.get(ObservationType.DIRECTION)
-
-        if obs_direc:
-            x_direc, y_direc = obs_direc.payload.direction
-            if x_direc not in mem_moves:
-                mem_moves.append(x_direc)
-                return self.action.move(x_direc)
-
-            if y_direc not in mem_moves:
-                mem_moves.append(y_direc)
-                return self.action.move(y_direc)
+        valid_moves = []
 
         if obs_surr:
+            # Filtra paredes e obstáculos
+            valid_moves = [
+                d for d, c in obs_surr.payload.cells.items()
+                if c not in ["WALL", "OBSTACLE", "Wall", "Obstacle"] and d != Direction.NONE
+            ]
+        else:
+            # Fallback se sensor falhar
+            valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
-            while True:
-                option = random.choice(list(obs_surr.payload.cells))
-                if option not in mem_moves:
-                    break
+        if not valid_moves:
+            return self.action.wait()
 
-            mem_moves.append(option)
-            return self.action.move(option)
+        good_opts = [d for d in valid_moves if d not in self.temp_mem_moves]
 
-        return self.action.wait()
+        final_move = None
+        if good_opts:
+            final_move = random.choice(good_opts)
+        else:
+            final_move = random.choice(valid_moves)
+
+        self.last_move = final_move
+        act = self.action.move(final_move)
+        self.last_attempted_action = act
+        return act

@@ -1,4 +1,5 @@
 import json
+import copy
 from typing import Union, Optional
 
 from map.entity import MapEntity
@@ -15,13 +16,12 @@ class Map:
     _char_entity_mapping: dict[str, MapEntity]
     _boundaries: Position
     _map_cells: dict[Position, MapEntity]
-    _default_empty: MapEntity  # Entidade para representar chão vazio
+    _default_empty: MapEntity
 
     def __init__(self, problem: str, data: dict, env):
         self._env = env
 
-        # Define uma entidade "Vazia" padrão que permite andar (collideable=False)
-        # Ajusta os argumentos conforme o teu MapEntity atual (char, name, cost, collideable...)
+        # Entidade padrão "Chão"
         self._default_empty = MapEntity(
             char=".", name="Empty", cost=0.0, collideable=False,
             kill_zone=False, active=False, draw=False
@@ -50,6 +50,12 @@ class Map:
         self._max_x = x
         self._max_y = y
 
+    def get_max_x(self):
+        return self._max_x
+
+    def get_max_y(self):
+        return self._max_y
+
     def _load_map_grid(self, path: str) -> dict[Position, MapEntity]:
         map_cells: dict[Position, MapEntity] = {}
 
@@ -65,14 +71,15 @@ class Map:
                             break
 
                         if ch in self._char_entity_mapping:
-                            map_cells[Position(x, y)] = self._char_entity_mapping[ch]
+                            # Clona a entidade para garantir instâncias únicas se necessário
+                            original = self._char_entity_mapping[ch]
+                            map_cells[Position(x, y)] = copy.deepcopy(original)
         except FileNotFoundError:
             print(f"CRITICAL ERROR: Could not find map file at {path}")
 
         return map_cells
 
     def _is_inbounds(self, pos: Position) -> bool:
-        # Usa os métodos da nova classe Position
         if not pos.is_strictly_less_than(self._boundaries):
             return False
         if pos.has_negative_coord():
@@ -81,19 +88,16 @@ class Map:
 
     def get_position_data(self, pos: Position) -> Optional[MapEntity]:
         """
-        Lógica Corrigida:
-        1. Se fora do mapa -> Retorna None (Environment bloqueia).
-        2. Se for obstáculo conhecido -> Retorna a Entidade.
-        3. Se for espaço vazio válido -> Retorna Entidade Vazia (Environment deixa passar).
+        Retorna a entidade na posição ou None se fora do mapa.
+        Se dentro e vazio, retorna _default_empty.
         """
         if not self._is_inbounds(pos):
-            return None  # Isto faz o Environment negar a ação (Boundaries)
+            return None
 
         entity = self._map_cells.get(pos)
         if entity:
             return entity
 
-        # Se está dentro dos limites e não há parede/comida, é chão vazio
         return self._default_empty
 
     def get_entity_by_name(self, ent: str):
@@ -104,8 +108,28 @@ class Map:
                 results[key] = data
         return results
 
-    def render(self, agent_positions: dict[Position, str]):
+    def remove_entity(self, pos: Position):
+        """ Remove fisicamente a entidade da grelha (ex: comida comida). """
+        if pos in self._map_cells:
+            del self._map_cells[pos]
 
+    def add_entity(self, pos: Position, name: str):
+        """ Cria e adiciona uma entidade numa posição específica (Respawn). """
+        if not self._is_inbounds(pos):
+            return
+
+        # Procura o template da entidade no mapping original
+        template = None
+        for key, ent in self._char_entity_mapping.items():
+            if ent.name.upper() == name.upper():
+                template = ent
+                break
+
+        if template:
+            # Insere uma cópia profunda na célula
+            self._map_cells[pos] = copy.deepcopy(template)
+
+    def render(self, agent_positions: dict[Position, str]):
         if self._env.renderer is not None:
             self._env.renderer.clear()
 
@@ -114,16 +138,15 @@ class Map:
             for x in range(self._max_x):
                 pos = Position(x, y)
 
-                # 1. Agente tem prioridade no desenho
+                # 1. Agente tem prioridade
                 if pos in agent_positions:
                     char = agent_positions[pos]
                     row += _format_char(char)
                     continue
 
-                # 2. Mapa estático
+                # 2. Mapa estático (Comida, Paredes, etc)
                 tile = self._map_cells.get(pos)
 
-                # Se não houver tile ou não for para desenhar (spawn), desenha vazio
                 if not tile or not tile.draw:
                     row += _format_char(_EMPTY_CELL)
                 else:

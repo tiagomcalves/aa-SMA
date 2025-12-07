@@ -14,30 +14,32 @@ from map.position import Position
 
 class Phineas(Navigator2D):
     """
-    Agente Q-Learning com Recompensa Híbrida (Extrínseca + Intrínseca/Novelty).
+    Agente Híbrido:
+    - Q-Learning para exploração (encontrar comida).
+    - Navegação Heurística/Sensorial para retorno ao ninho.
     """
 
     def __init__(self, problem: str, name: str, properties: dict):
         super().__init__(problem, name, properties)
 
-        # Configs
         self._position = Position(*properties.get("starting_position", (0, 0)))
         self.char = properties.get("char", "P")
-
-        # Hiperparâmetros
         self.learning_rate = properties.get("learning_rate", 0.1)
         self.discount_factor = properties.get("discount_factor", 0.9)
         self.epsilon = properties.get("epsilon", 0.1)
         self.mode = properties.get("mode", "LEARNING")
 
-        # Conhecimento
+        self.carrying = False
         self.q_table = {}
-        self.visit_counts = {}  # Novelty Search Memory
+        self.visit_counts = {}
 
-        # Memória de Estado Anterior
-        self.last_state: Optional[str] = None
-        self.last_action: Optional[str] = None
-        self.last_extrinsic_reward: float = 0.0
+        # --- MEMÓRIA ESPACIAL ---
+        self.known_nest_position: Optional[Position] = None
+
+        self.last_state = None
+        self.last_action = None
+        self.last_attempted_action: Optional[Action] = None
+        self.last_extrinsic_reward = 0.0
 
         self.load_knowledge()
 
@@ -45,160 +47,184 @@ class Phineas(Navigator2D):
         obs = self._sensor.get_info(self)
         self.state.update_sensor_data(True, obs)
 
-        # Mapeamento do Payload para uso interno
         if obs.surroundings:
             self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
+            self._scan_for_nest(obs.surroundings.payload.cells)
+
         if obs.directions:
             self.curr_observations[ObservationType.DIRECTION] = obs.directions
         if obs.location:
             self.curr_observations[ObservationType.LOCATION] = obs.location
+            tile = getattr(obs.location.payload, 'tile_name', "").upper()
+            if tile == "NEST":
+                self.known_nest_position = self._position
 
         return obs
 
+    def _scan_for_nest(self, cells: dict):
+        """ Verifica se o ninho está à volta e guarda a posição absoluta """
+        for direction, content in cells.items():
+            if content in ["NEST", "Nest"]:
+                self.known_nest_position = self._position + direction
+
     def observation(self, obs: Observation):
+        """ Recebe feedback e atualiza estado interno """
         if obs.type == ObservationType.ACCEPTED:
-            # Recebe a recompensa do ambiente (ex: -1 por andar, +100 por objetivo)
             self.last_extrinsic_reward = obs.payload.reward
 
+            if self.last_attempted_action:
+                if self.last_attempted_action.name == "move":
+                    direction = self.last_attempted_action.params.get("direction")
+                    if direction:
+                        self._position = self._position + direction
+
+                # 2. Atualiza estado de carga
+                elif self.last_attempted_action.name == "pick":
+                    self.carrying = True
+                elif self.last_attempted_action.name == "drop":
+                    self.carrying = False
+
         elif obs.type == ObservationType.DENIED:
-            # Se bateu na parede, penalização imediata
             self.last_extrinsic_reward = obs.payload.reward
 
         elif obs.type == ObservationType.TERMINATE:
-            self.last_extrinsic_reward = obs.payload.reward  # +100 final
+            self.last_extrinsic_reward = obs.payload.reward
             self.status = AgentStatus.TERMINATED
             self.save_knowledge()
-            log().print(f"Agente {self.name} terminou. Conhecimento salvo.")
 
     def _get_state_key(self) -> str:
-        """ Gera hash do estado atual baseado nos sensores """
-        state_parts = []
-
-        # Sensor de Direção (Onde está o objetivo?)
+        state_parts = [f"C:{1 if self.carrying else 0}"]
         obs_dir = self.curr_observations.get(ObservationType.DIRECTION)
-        if obs_dir:
-            # Nota: obs_dir.payload.direction é um tuplo (DirX, DirY)
-            state_parts.append(f"Dir:{obs_dir.payload.direction}")
-
-        # Sensor de Arredores (Onde estão as paredes?)
-        obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
-        if obs_surr:
-            cells = obs_surr.payload.cells
-            # Ordenar chaves para garantir consistência da string
-            # Direction é Enum, ordenamos pelo 'name' ou 'value' se possível
-            # Simplificação: assumindo chaves fixas
-            surr_str = ""
-            for d in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
-                val = cells.get(d, "UNK")
-                surr_str += f"{d.name[0]}:{val}|"
-            state_parts.append(f"Surr:{surr_str}")
-
+        if obs_dir: state_parts.append(f"Dir:{obs_dir.payload.direction}")
         return ";".join(state_parts)
 
-    def _calculate_intrinsic_reward(self, state: str) -> float:
-        """
-        Novelty Search: Bónus por visitar estados novos.
-        Opção A (Decaimento): 1.0 / N visitas (Incentiva exploração contínua)
-        Opção B (Estrita): 1.0 se N=1, senão 0 (Apenas novidade absoluta)
-        """
-        count = self.visit_counts.get(state, 0)
-
-        # Implementação com Decaimento (Mais estável para Q-Learning)
-        if count == 0: return 1.0
-        return 1.0 / (count + 1)
-
     def _learn(self, current_state: str):
-        """ Algoritmo Q-Learning """
-        if self.last_state is None or self.last_action is None:
-            return
-
+        if self.last_state is None or self.last_action is None: return
         old_q = self.q_table.get((self.last_state, self.last_action), 0.0)
 
-        # R_total = R_extrinseca (Ambiente) + R_intrinseca (Novidade do estado atual)
-        r_intrinsic = self._calculate_intrinsic_reward(current_state)
-        r_total = self.last_extrinsic_reward + r_intrinsic
+        # Novelty reward
+        visit_bonus = 1.0 / (self.visit_counts.get(current_state, 0) + 1)
+        r_total = self.last_extrinsic_reward + visit_bonus
 
-        # Max Q(S', a')
         max_next_q = float('-inf')
-        possible_actions = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-
-        for move in possible_actions:
-            q_val = self.q_table.get((current_state, str(move)), 0.0)
-            if q_val > max_next_q:
-                max_next_q = q_val
-
+        for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
+            q = self.q_table.get((current_state, str(move)), 0.0)
+            if q > max_next_q: max_next_q = q
         if max_next_q == float('-inf'): max_next_q = 0.0
 
-        # Atualização Bellman
         new_q = old_q + self.learning_rate * (r_total + (self.discount_factor * max_next_q) - old_q)
         self.q_table[(self.last_state, self.last_action)] = new_q
 
-    def act(self) -> Action:
-        if not self.has_observations():
-            self.use_sensor()
+    def _get_direction_to_target(self, target: Position, valid_moves: list) -> Direction:
+        """ Calcula a melhor direção para o alvo (Manhattan) """
+        diff = target - self._position
+        dx, dy = diff.x, diff.y
 
-        current_state = self._get_state_key()
-
-        # Update contagem de visitas
-        self.visit_counts[current_state] = self.visit_counts.get(current_state, 0) + 1
-
-        # Passo de Aprendizagem
-        if self.mode == "LEARNING":
-            self._learn(current_state)
-
-        # Escolha da Ação
-        obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
-        valid_moves = []
-        if obs_surr:
-            for direction, content in obs_surr.payload.cells.items():
-                if content != "OBSTACLE" and content != "WALL":  # Ajustar string ao teu Entity Map
-                    valid_moves.append(direction)
+        if abs(dx) > abs(dy):
+            primary = Direction.RIGHT if dx > 0 else Direction.LEFT
+            secondary = Direction.DOWN if dy > 0 else Direction.UP
         else:
-            valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+            primary = Direction.DOWN if dy > 0 else Direction.UP
+            secondary = Direction.RIGHT if dx > 0 else Direction.LEFT
+
+        if primary in valid_moves: return primary
+        if secondary in valid_moves: return secondary
+
+        return random.choice(valid_moves) if valid_moves else Direction.NONE
+
+    def act(self) -> Action:
+        if not self.has_observations(): self.use_sensor()
+
+        # 1. INSTINTO: Interagir (Pick/Drop)
+        obs_loc = self.curr_observations.get(ObservationType.LOCATION)
+        if obs_loc:
+            tile = getattr(obs_loc.payload, 'tile_name', "").upper()
+            if not self.carrying and tile in ["FOOD", "RESOURCE"]:
+                act = self.action.pick();
+                self.last_attempted_action = act;
+                return act
+            if self.carrying and tile == "NEST":
+                act = self.action.drop();
+                self.last_attempted_action = act;
+                return act
+
+        # 2. FILTRO DE MOVIMENTOS (CRÍTICO: Paredes são proibidas)
+        valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+        obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
+
+        if obs_surr:
+            # Lista exaustiva de nomes para paredes
+            walls = ["WALL", "OBSTACLE", "Wall", "Obstacle", "#"]
+            valid_moves = [d for d, c in obs_surr.payload.cells.items() if c not in walls]
 
         if not valid_moves:
-            # Encurralado
-            return self.action.wait()
+            act = self.action.wait();
+            self.last_attempted_action = act;
+            return act
 
-        # Epsilon-Greedy
-        chosen_direction = None
+        # 3. DECISÃO DE NAVEGAÇÃO
+        final_dir = None
 
-        if self.mode == "TEST" or random.random() > self.epsilon:
-            # EXPLOIT (Melhor Q)
-            max_q = float('-inf')
-            best_moves = []
-            for move in valid_moves:
-                q = self.q_table.get((current_state, str(move)), 0.0)
-                if q > max_q:
-                    max_q = q
-                    best_moves = [move]
-                elif q == max_q:
-                    best_moves.append(move)
+        # --- FASE A: RETORNO AO NINHO (Se tiver carga) ---
+        if self.carrying:
+            # Opção A: Já sabemos onde é o ninho? Matemática pura.
+            if self.known_nest_position:
+                final_dir = self._get_direction_to_target(self.known_nest_position, valid_moves)
 
-            chosen_direction = random.choice(best_moves) if best_moves else random.choice(valid_moves)
+            # Opção B: Não sabemos, mas o sensor de direção (Environment Hack) aponta o caminho.
+            elif ObservationType.DIRECTION in self.curr_observations:
+                obs_dir = self.curr_observations[ObservationType.DIRECTION]
+                # obs_dir.payload.direction é um tuplo de Directions: (DirX, DirY)
+                dx, dy = obs_dir.payload.direction
+
+                # Tenta seguir o sensor
+                if dx != Direction.NONE and dx in valid_moves:
+                    final_dir = dx
+                elif dy != Direction.NONE and dy in valid_moves:
+                    final_dir = dy
+
+            # Se ainda não temos direção, explora aleatoriamente até achar pista
+            if final_dir is None:
+                final_dir = random.choice(valid_moves)
+
+        # --- FASE B: PROCURA (Sem carga) - Q-Learning ---
         else:
-            # EXPLORE (Aleatório)
-            chosen_direction = random.choice(valid_moves)
+            curr_state = self._get_state_key()
+            self.visit_counts[curr_state] = self.visit_counts.get(curr_state, 0) + 1
+            if self.mode == "LEARNING": self._learn(curr_state)
 
-        self.last_state = current_state
-        self.last_action = str(chosen_direction)
+            if self.mode == "TEST" or random.random() > self.epsilon:
+                # Exploit
+                max_q = float('-inf')
+                best = []
+                for m in valid_moves:
+                    q = self.q_table.get((curr_state, str(m)), 0.0)
+                    if q > max_q:
+                        max_q = q; best = [m]
+                    elif q == max_q:
+                        best.append(m)
+                final_dir = random.choice(best) if best else random.choice(valid_moves)
+            else:
+                # Explore
+                final_dir = random.choice(valid_moves)
 
-        return self.action.move(chosen_direction)
+        self.last_state = curr_state
+        self.last_action = str(final_dir)
+        act = self.action.move(final_dir)
+        self.last_attempted_action = act
+        return act
 
     def save_knowledge(self):
-        filename = f"qtable_{self.name}.pkl"
         try:
-            with open(filename, "wb") as f:
+            with open(f"qtable_{self.name}.pkl", "wb") as f:
                 pickle.dump(self.q_table, f)
-        except Exception:
-            pass  # Ignorar erros de ficheiro no shutdown
+        except:
+            pass
 
     def load_knowledge(self):
-        filename = f"qtable_{self.name}.pkl"
-        if os.path.exists(filename):
+        if os.path.exists(f"qtable_{self.name}.pkl"):
             try:
-                with open(filename, "rb") as f:
+                with open(f"qtable_{self.name}.pkl", "rb") as f:
                     self.q_table = pickle.load(f)
-                log().print(f"Q-Table loaded: {len(self.q_table)} states.")
-            except Exception:
+            except:
                 pass
