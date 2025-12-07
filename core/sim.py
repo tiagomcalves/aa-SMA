@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import math
 from argparse import Namespace
 from typing import final
 import time
@@ -19,12 +21,12 @@ from map.position import Position
 class Simulator:
 
     def __init__(self, env: Environment, agents: list[Agent], args:Namespace):
+        self._agents = agents
+        self._env = env
         self.args = args
-        self._scheduler = Scheduler()
+        self._scheduler = Scheduler(self._calculate_max_steps())
         self._name = args.problem
         self._STEP_SECONDS = args.step / 1000
-        self._env = env
-        self._agents = agents
         self._curr_time = time.time()
         self._boot_output()
 
@@ -72,6 +74,11 @@ class Simulator:
 
         return positions
 
+    def _calculate_max_steps(self) -> int:
+        grid_x, grid_y = self._env.get_map_size()
+        p = (grid_x * 2) + (grid_y * 2)
+        return math.ceil( (5/8) * p)
+
     def list_agents(self) -> list[Agent]:
         return self._agents
 
@@ -91,7 +98,7 @@ class Simulator:
         for a in self._agents:
             a.status = AgentStatus.RUNNING
 
-        while True:
+        while not self._scheduler.out_of_steps():
 
             log().print(conv)
 
@@ -126,6 +133,8 @@ class Simulator:
         steps_str = f" at {self.args.step} ms per step" if not self.args.train else ", step delays are disabled in training mode"
         r_str = f"display simulation in {"separate renderer window" if self.args.renderer else "stdout"}"
 
+        max_x, max_y = self._env.get_map_size()
+
         log().print(
 f"""------------------------------------------------
 Initialize new Simulation of \"{self._name}\" at {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._curr_time))}
@@ -134,7 +143,10 @@ Running in {"training" if self.args.train else "testing"} mode{steps_str}
 { ("running headless" if self.args.headless else r_str) if not self.args.train else "running headless in training mode"}
 
 Currently loaded {len(self._agents)} agents: 
-{_agents_list}""")
+{_agents_list}
+Loaded map size is {max_x} by {max_y}
+Maximum amount of steps: {self._calculate_max_steps()}
+""")
         if not self.args.train and not self.args.headless:
             if not self.args.renderer:
                 log().print("\nInitial State:")
