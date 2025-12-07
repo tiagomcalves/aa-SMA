@@ -2,6 +2,7 @@ import json
 from typing import Union
 
 from abstract import Agent
+from component.reward import REWARD
 from map.entity import MapEntity, EntityPosition, AgentData
 from map.position import Position
 
@@ -46,7 +47,7 @@ class Map:
 
         map_cells: dict[Position, MapEntity] = \
             {
-                OUT_OF_BOUNDS: MapEntity("\0", "Boundarie", -9999.0, False, False, False, True)
+                OUT_OF_BOUNDS: MapEntity("\0", "Boundarie", REWARD.OUT_OF_BOUNDS, False, False, False, True)
             }
 
         with open(path, "r") as f:
@@ -72,6 +73,9 @@ class Map:
             return False
 
         return True
+
+    def get_size(self) -> tuple[int,int]:
+        return self._boundaries.get()
 
     def get_position_data(self, pos: Position) -> Union[MapEntity, None]:
         if not self._is_inbounds(pos):

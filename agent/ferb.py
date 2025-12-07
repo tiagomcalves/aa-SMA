@@ -21,7 +21,7 @@ class Ferb(Navigator2D):
 
     def observation(self, obs: Observation):
         if obs.type == ObservationType.NONE:
-            self.use_sensor()
+            self.use_sensor(False)
             return
 
         if obs.type == ObservationType.TERMINATE:
@@ -29,7 +29,7 @@ class Ferb(Navigator2D):
             self.state.set_final_state()
 
         elif obs.type == ObservationType.DENIED:
-            self.state.update_sensor_data()
+            self.state.update_sensor_data(True)
 
         elif obs.type == ObservationType.ACCEPTED:
             self.curr_observations.clear()
@@ -37,7 +37,9 @@ class Ferb(Navigator2D):
             action = obs.payload
             # AcceptedPayload(action=Action(name='move', agent=<agent.ferb.Ferb object at 0x0000024E6B655F70>, params={'direction': <RIGHT>}), reward=1.0)
             reward = obs.payload.reward
+            self.last_move = action.action.params.get("direction")
             self.temp_mem_moves.append(self.last_move.opposite())
+            self.use_sensor(True)
 
         self.state.log_state()
 
