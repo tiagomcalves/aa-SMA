@@ -1,3 +1,4 @@
+import random
 from typing import Optional
 
 from abstract.agent import Agent
@@ -19,12 +20,12 @@ class Environment:
 
     def __init__(self, problem: str, data: dict, renderer=True):
         self._handlers = {}
-        self.problem_type = problem  # Guardar o tipo de problema (lighthouse vs foraging)
+        self.problem_type = problem
         if renderer:
             self.renderer = Renderer()
 
         self._map = Map(problem, data["map"], self)
-        self._agent_data = {}  # Inicializa vazio para evitar erros antes do registo
+        self._agent_data = {}
 
     def register_handler(self, request_type: str):
         handler_cls = HANDLER_REGISTRY.get(request_type)
@@ -35,9 +36,8 @@ class Environment:
 
     @staticmethod
     def setup_agent(name: str, data: dict) -> AgentData:
-        # Adiciona flag 'carrying' para o problema de Recoleção
         agent_data = AgentData(data["char"], name, Position(*data["starting_position"]), 0.0)
-        agent_data.carrying = None  # None ou valor do recurso
+        agent_data.carrying = None
         return agent_data
 
     def register_agents(self, agents_dict: dict[Agent, AgentData]) -> None:
@@ -50,22 +50,35 @@ class Environment:
 
     def send_observation(self, agent: Agent, obs: Observation) -> Observation:
         agent.observation(obs)
-
         if obs.type == ObservationType.TERMINATE:
             self.remove_agent(agent)
-
         return obs
 
     def update(self):
-        """
-        Atualiza a dinâmica do ambiente (ex: respawn de recursos).
-        """
-        pass
+        """ Atualiza a dinâmica do ambiente (Respawn) """
+        if self.problem_type == "foraging":
+            # 5% de chance de spawnar comida nova a cada tick
+            if random.random() < 0.05:
+                # Tenta 5 vezes encontrar um lugar vazio aleatório
+                for _ in range(5):
+                    x = random.randint(0, self._map.get_max_x() - 1)
+                    y = random.randint(0, self._map.get_max_y() - 1)
+                    pos = Position(x, y)
+                    tile = self.get_tile_data(pos)
+
+                    # Só coloca se for Empty e não tiver parede
+                    # Verifica também se não há agentes em cima
+                    agent_here = False
+                    for adata in self._agent_data.values():
+                        if adata.pos == pos:
+                            agent_here = True
+                            break
+
+                    if tile.name == "Empty" and not tile.collideable and not agent_here:
+                        self._map.add_entity(pos, "FOOD")
+                        break
 
     def act(self, action: Action, agent: Agent):
-        """
-        Encaminha a ação para a lógica correta.
-        """
         if action.name == "move":
             self.validate_move(action)
         elif action.name == "pick":
@@ -85,15 +98,14 @@ class Environment:
 
     def render(self):
         positions = self._pack_agents_positions()
-
-        # --- LINHA DE DEBUG (Apaga depois de confirmar que funciona) ---
-        log().print(f"DEBUG RENDER: Agentes em {list(positions.keys())}")
-        # ---------------------------------------------------------------
-
         self._map.render(positions)
 
     def get_objectives(self):
-        return self._map.get_entity_by_name("OBJECTIVE")
+        # Retorna todos os objetivos possíveis para os sensores padrão
+        objs = {}
+        for name in ["Objective", "OBJECTIVE", "Food", "FOOD", "Nest", "NEST"]:
+            objs.update(self._map.get_entity_by_name(name))
+        return objs
 
     def get_tile_data(self, pos: Position) -> MapEntity:
         return self._map.get_position_data(pos)
@@ -105,42 +117,31 @@ class Environment:
         return "EMPTY"
 
     def validate_move(self, action: Action):
-        """ Lógica de Movimento e Colisões """
         agent = action.agent
         direction = action.params.get("direction")
 
-        # 1. Agente decidiu ficar parado
         if direction == Direction.NONE:
-            log().vprint("agent ", self._agent_data[agent].name, " is choosing to stand still")
-            self.send_observation(agent, Observation.denied(action, -1.0))
+            self.send_observation(agent, Observation.denied(action, -2.0))
             return
 
         current_pos = self._agent_data[agent].pos
         target_pos = current_pos + direction
-
         tile = self.get_tile_data(target_pos)
 
-        # 2. Verificar Limites e Obstáculos Estáticos
         if tile is None:
             self.send_observation(agent, Observation.denied(action, -1.0))
             return
         elif tile.collideable:
-            log().vprint(f"Agent {self._agent_data[agent].name} hit wall")
             self.send_observation(agent, Observation.denied(action, -0.5))
             return
 
-        # 3. Verificar Colisão com outros Agentes
         for o_agent, o_data in self._agent_data.items():
             if o_agent is agent: continue
             if o_data.pos == target_pos:
-                log().vprint(f"Agent {self._agent_data[agent].name} bumped into {o_data.name}")
                 self.send_observation(agent, Observation.denied(action, -0.2))
                 return
 
-        # 4. Movimento Válido
         self._agent_data.get(agent).pos = target_pos
-
-        # --- CORREÇÃO: Penalização por passo (-1.0) para incentivar rapidez ---
         self.send_observation(agent, Observation.accepted(action, -1.0))
 
     def agent_pick(self, action: Action):
@@ -153,42 +154,33 @@ class Environment:
 
         log().vprint(f"env: {action.agent.name} picking at {tile.name}")
 
-        # --- CASO 1: FAROL (LIGHTHOUSE) ---
+        # Lighthouse
         if tile.name.upper() == "OBJECTIVE":
-            log().print(f"!!! {action.agent.name} REACHED OBJECTIVE !!!")
-            # Recompensa +100 conforme relatório
             self.send_observation(action.agent, Observation.terminate(action, 100.0))
             return
 
-        # --- CASO 2: RECOLEÇÃO (FORAGING) ---
-        # Se for Comida ou Recurso
+        # Foraging
         if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"]:
             if agent_data.carrying is None:
-                agent_data.carrying = 1.0  # Valor base do recurso
-                # Nota: Idealmente removerias o item do mapa aqui (self._map.remove_item(pos))
+                agent_data.carrying = 1.0
 
-                # Apanhar não dá recompensa imediata, só depositar
-                self.send_observation(action.agent, Observation.accepted(action, -0.1))
+                self._map.remove_entity(agent_data.pos)
+
+                self.send_observation(action.agent, Observation.accepted(action, 50.0))
             else:
-                # Já está carregado
                 self.send_observation(action.agent, Observation.denied(action, -0.1))
             return
 
         self.send_observation(action.agent, Observation.denied(action, -0.1))
 
     def agent_drop(self, action: Action):
-        """ Lógica para depositar recursos no Ninho (Foraging) """
         agent_data = self._agent_data[action.agent]
         tile = self.get_tile_data(agent_data.pos)
 
-        # Só pode largar se tiver algo e estiver no Ninho
         if agent_data.carrying is not None and tile.name.upper() == "NEST":
-            # Fórmula do Relatório: R = Deposito * Valor
-            reward = 10.0 * agent_data.carrying
-
-            agent_data.carrying = None  # Esvazia inventário
-            log().print(f"{action.agent.name} deposited resource! Reward: {reward}")
-
+            reward = 100.0
+            agent_data.carrying = None
+            log().print(f"{action.agent.name} DELIVERED!")
             self.send_observation(action.agent, Observation.accepted(action, reward))
         else:
             self.send_observation(action.agent, Observation.denied(action, -0.1))
@@ -196,11 +188,60 @@ class Environment:
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}
         sensor_data = {}
+
+        # 1. Gera dados normais
         for handler_name, handler_inst in self._handlers.items():
             sensor_data[handler_name] = handler_inst.handle(self._agent_data[agent], self)
+
+        # 2. Fix para Foraging: Ajustar direção com base na carga
+        if self.problem_type == "foraging" and "directions" in sensor_data:
+            agent_data = self._agent_data[agent]
+            current_pos = agent_data.pos
+            target_pos = None
+
+            # Se carrega comida -> Alvo é NINHO
+            if agent_data.carrying is not None:
+                nests = self._map.get_entity_by_name("Nest")
+                if not nests: nests = self._map.get_entity_by_name("NEST")
+                if nests:
+                    target_pos = list(nests.keys())[0]
+
+            # Se está vazio -> Alvo é COMIDA mais próxima
+            else:
+                foods = self._map.get_entity_by_name("Food")
+                if not foods: foods = self._map.get_entity_by_name("FOOD")
+
+                if foods:
+                    min_dist = float('inf')
+                    best_f = None
+                    for f_pos in foods.keys():
+                        dist = abs(f_pos.x - current_pos.x) + abs(f_pos.y - current_pos.y)
+                        if dist < min_dist:
+                            min_dist = dist
+                            best_f = f_pos
+                    target_pos = best_f
+
+            # Sobrescreve a direção
+            if target_pos:
+                diff = target_pos - current_pos
+                dx_val, dy_val = 0, 0
+                if diff.x > 0: dx_val = 1
+                elif diff.x < 0: dx_val = -1
+                if diff.y > 0: dy_val = 1
+                elif diff.y < 0: dy_val = -1
+
+                dir_x = Direction.NONE
+                if dx_val == 1: dir_x = Direction.RIGHT
+                elif dx_val == -1: dir_x = Direction.LEFT
+
+                dir_y = Direction.NONE
+                if dy_val == 1: dir_y = Direction.DOWN
+                elif dy_val == -1: dir_y = Direction.UP
+
+                if hasattr(sensor_data["directions"].payload, 'direction'):
+                    sensor_data["directions"].payload.direction = (dir_x, dir_y)
+
         return sensor_data
 
     def get_entities_by_type(self, entity_name: str) -> dict:
-        """ Devolve todas as posições de entidades com um determinado nome (ex: 'FOOD', 'NEST') """
-        # Reutiliza a lógica do get_entity_by_name do Map
         return self._map.get_entity_by_name(entity_name)
