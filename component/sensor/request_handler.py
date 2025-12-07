@@ -58,7 +58,7 @@ class DirectionsHandler(Handler):
                 # Mãos cheias: Procura o Ninho para depositar
                 target_name = "NEST"
 
-        # Usa o método genérico que adicionámos ao Environment
+        # Usa o metodo genérico que adicionámos ao Environment
         targets = env.get_entities_by_type(target_name)
 
         # Se não houver alvos (ex: comida acabou), retorna Direção Nula
