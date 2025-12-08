@@ -1,5 +1,6 @@
-{"char": "#", "name": "Wall",      "reward": -0.5,  "remove_on_touch": false, "custom": false, "draw": true, "collideable": true}
-{"char": "S",  "name":"Spawn",     "reward": 0.0,   "remove_on_touch": false, "custom": true,  "draw": false,"collideable": false}
-{"char": "O",  "name":"Objective", "reward": 100,   "remove_on_touch": false, "custom": false, "draw": true, "collideable": false}
-{"char": "$", "name": "Coin",      "reward": 5.0,   "remove_on_touch": true,  "custom": true,  "draw": true, "collideable": false}
-{"char": "!", "name": "Trap",      "reward": -10.0, "remove_on_touch": true,  "custom": true,  "draw": true, "collideable": false}
+{"char": "#", "name": "Wall", "cost": 100.0, "collideable": true, "kill_zone": false, "active": false, "draw": true}
+{"char": "O", "name": "Objective", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
+{"char": "F", "name": "Food", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
+{"char": "N", "name": "Nest", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
+{"char": "S", "name": "Spawn", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": false}
+{"char": ".", "name": "Empty", "cost": 0.0, "collideable": false, "kill_zone": false, "active": false, "draw": false}

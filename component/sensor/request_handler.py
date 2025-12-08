@@ -7,70 +7,103 @@ from component.observation import Observation, ObservationType
 from map.entity import AgentData
 
 
+# --- Classe Auxiliar para permitir acesso com ponto (obj.cells) ---
+class Payload:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 class Handler(ABC):
     @abstractmethod
-    def handle(self, agent_data:AgentData, env) -> dict:
+    def handle(self, agent_data: AgentData, env) -> Observation:
         pass
+
 
 @registry.register_handler("surroundings")
 class SurroundingsHandler(Handler):
-    def handle(self, agent_data:AgentData, env) -> Observation:
+    def handle(self, agent_data: AgentData, env) -> Observation:
+        # APENAS as 4 direções cardinais
+        surroundings_data = {}
 
-        surroundings_payload = {Direction.NONE: env.get_tile_as_str(agent_data.pos),
-                                Direction.UP: env.get_tile_as_str(agent_data.pos + Direction.UP),
-                                Direction.DOWN: env.get_tile_as_str(agent_data.pos + Direction.DOWN),
-                                Direction.LEFT: env.get_tile_as_str(agent_data.pos + Direction.LEFT),
-                                Direction.RIGHT: env.get_tile_as_str(agent_data.pos + Direction.RIGHT)}
+        # Verifica UP
+        up_pos = agent_data.pos + Direction.UP
+        surroundings_data[Direction.UP] = env.get_tile_as_str(up_pos)
 
-        log().vprint("[Env] processing surroundings of ",agent_data.name,":", agent_data.pos)
+        # Verifica DOWN
+        down_pos = agent_data.pos + Direction.DOWN
+        surroundings_data[Direction.DOWN] = env.get_tile_as_str(down_pos)
 
-        obs = Observation(ObservationType.SURROUNDINGS,{"cells": surroundings_payload})
-        return obs
+        # Verifica LEFT
+        left_pos = agent_data.pos + Direction.LEFT
+        surroundings_data[Direction.LEFT] = env.get_tile_as_str(left_pos)
+
+        # Verifica RIGHT
+        right_pos = agent_data.pos + Direction.RIGHT
+        surroundings_data[Direction.RIGHT] = env.get_tile_as_str(right_pos)
+
+        # NÃO inclui Direction.NONE!
+        # O agente já sabe onde está através do sensor "location"
+
+        payload = Payload(cells=surroundings_data)
+        return Observation(ObservationType.SURROUNDINGS, payload)
+
 
 @registry.register_handler("directions")
 class DirectionsHandler(Handler):
-    def handle(self, agent_data:AgentData, env) -> Observation:
+    def handle(self, agent_data: AgentData, env) -> Observation:
 
-        objectives = env.get_objectives()
+        # --- LÓGICA NOVA (Smart Sensor) ---
+        target_name = "OBJECTIVE"  # Default (Lighthouse)
 
-        if objectives is None:
-            directions_payload = {Direction.NONE, Direction.NONE}
-        else:
-            shortest_distance_pos = None
-            shortest_distance = None
-            (px, py) = agent_data.pos.get()
+        # Verifica se estamos num cenário de Recoleção (Foraging)
+        if hasattr(agent_data, 'carrying'):
+            if agent_data.carrying is None:
+                # Mãos vazias: Procura Comida
+                target_name = "FOOD"
 
-            for pos, objective in objectives.items():
-                (ox,oy) = pos.get()
-                dist = (ox-px)**2 + (oy-py)**2
+                # Fallback: Se não houver comida, verifica se é o problema do Farol
+                # Isto impede crashes se usares este sensor no problema do Farol
+                if not env.get_entities_by_type(target_name):
+                    if env.get_entities_by_type("OBJECTIVE"):
+                        target_name = "OBJECTIVE"
+            else:
+                # Mãos cheias: Procura o Ninho para depositar
+                target_name = "NEST"
 
-                if shortest_distance is None:
-                    shortest_distance = dist
-                    shortest_distance_pos = pos
-                    continue
+        # Usa o metodo genérico que adicionámos ao Environment
+        targets = env.get_entities_by_type(target_name)
 
-                if shortest_distance >= dist:
-                    shortest_distance = dist
-                    shortest_distance_pos = pos
+        # Se não houver alvos (ex: comida acabou), retorna Direção Nula
+        if targets is None or len(targets) == 0:
+            payload = Payload(direction=(Direction.NONE, Direction.NONE))
+            return Observation(ObservationType.DIRECTION, payload)
 
-            (ox,oy) = shortest_distance_pos.get()
-            x_direction = Direction.NONE
-            y_direction = Direction.NONE
+        # --- Lógica de Proximidade (Inalterada) ---
+        shortest_distance_pos = None
+        shortest_distance = None
+        (px, py) = agent_data.pos.get()
 
-            if ox - px < 0:
-                x_direction = Direction.LEFT
-            elif ox - px > 0:
-                x_direction = Direction.RIGHT
+        for pos, entity in targets.items():
+            (ox, oy) = pos.get()
+            dist = (ox - px) ** 2 + (oy - py) ** 2
 
-            if oy - py < 0:
-                y_direction = Direction.UP
-            elif oy - py > 0:
-                y_direction = Direction.DOWN
+            if shortest_distance is None or dist < shortest_distance:
+                shortest_distance = dist
+                shortest_distance_pos = pos
 
-            directions_payload = (x_direction, y_direction)
+        (ox, oy) = shortest_distance_pos.get()
+        x_direction = Direction.NONE
+        y_direction = Direction.NONE
 
-        log().vprint("[Env] processing directions of ",agent_data.name,":", agent_data.pos)
+        if ox - px < 0:
+            x_direction = Direction.LEFT
+        elif ox - px > 0:
+            x_direction = Direction.RIGHT
 
-        obs = Observation(ObservationType.DIRECTION,{"direction": directions_payload})
-        return obs
+        if oy - py < 0:
+            y_direction = Direction.UP
+        elif oy - py > 0:
+            y_direction = Direction.DOWN
 
+        payload = Payload(direction=(x_direction, y_direction))
+        return Observation(ObservationType.DIRECTION, payload)

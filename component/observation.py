@@ -4,8 +4,6 @@ from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
 
-from pywin.mfc.object import Object
-
 from component.action import Action
 from component.direction import Direction
 
@@ -28,12 +26,29 @@ class Observation:
 
         if payload is None:
             self.payload = None
+
+        # 1. Se for Dicionário -> Converte para Dataclass
         elif isinstance(payload, dict):
             self.payload = payload_class(**payload) if payload_class else payload
+
+        # 2. Se for a Dataclass correta -> Aceita
         elif payload_class is not None and isinstance(payload, payload_class):
             self.payload = payload
+
+        # 3. NOVO: Se for um objeto genérico (do Sensor) -> Tenta converter para Dataclass
+        elif hasattr(payload, "__dict__") and payload_class is not None:
+            try:
+                # Tenta desempacotar os atributos do objeto para a Dataclass
+                self.payload = payload_class(**payload.__dict__)
+            except TypeError:
+                # Se os campos não baterem certo, guarda como está
+                self.payload = payload
         else:
-            raise TypeError(f"payload must be dict or {payload_class} instance, got {type(payload)}")
+            # Fallback final ou Erro
+            if payload_class:
+                raise TypeError(
+                    f"payload must be dict or {payload_class.__name__} instance, got {type(payload).__name__}")
+            self.payload = payload
 
     @classmethod
     def none(cls):
@@ -63,35 +78,43 @@ class Observation:
             raise ValueError("action and reward are required when payload is not provided")
         return cls(ObservationType.TERMINATE, {"action": action, "reward": reward})
 
+
 @dataclass
 class SurroundingsPayload:
     cells: dict[Direction, str]
+
 
 @dataclass
 class StatusPayload:
     reward: float
 
+
 @dataclass
 class AcceptedMovePayload:
     direction: Direction
+
 
 @dataclass
 class AcceptedPayload:
     action: Action
     reward: float
 
+
 @dataclass
 class DeniedPayload:
     action: Action
     reward: float
 
+
 @dataclass
 class LocationPayload:
     distance: float
 
+
 @dataclass
 class GPSPayload:
     direction: tuple[Direction, Direction]
+
 
 @dataclass
 class EmptyPayload:
@@ -108,6 +131,7 @@ OBSERVATION_PAYLOADS = {
     ObservationType.TERMINATE: AcceptedPayload,
 }
 
+
 @dataclass
 class ObservationBundle:
     surroundings: Optional[Observation] = None
@@ -122,7 +146,9 @@ class ObservationBundle:
             location=obs_dict.get("location"),
         )
 
-    def unpack(self, obs_type: ObservationType) -> dict|object|None:
+    def unpack(self, obs_type: ObservationType) -> dict | object | None:
+        # Nota: Agora self.surroundings.payload é garantidamente um SurroundingsPayload
+        # por isso podemos aceder a .cells diretamente
         if obs_type == ObservationType.SURROUNDINGS and self.surroundings is not None:
             return self.surroundings.payload.cells
         elif obs_type == ObservationType.DIRECTION and self.directions is not None:

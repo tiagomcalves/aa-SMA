@@ -13,13 +13,9 @@
   },
 
   "agents": {
-    "Another_Explorer": {
-      "starting_position": [0, 0],
-      "char": "A"
-    },
-    "Third_Explorer": {
-      "starting_position": [9, 8],
-      "char": "B"
+    "2D_Explorer": {
+      "starting_position": [3, 0],
+      "char": "E"
     }
   }
 }
