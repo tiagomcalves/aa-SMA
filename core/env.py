@@ -55,24 +55,16 @@ class Environment:
         return obs
 
     def update(self):
-        """ Atualiza a dinâmica do ambiente (Respawn) """
+        """ Respawn de Comida (5% chance) """
         if self.problem_type == "foraging":
-            # 5% de chance de spawnar comida nova a cada tick
             if random.random() < 0.05:
-                # Tenta 5 vezes encontrar um lugar vazio aleatório
-                for _ in range(5):
+                for _ in range(10):
                     x = random.randint(0, self._map.get_max_x() - 1)
                     y = random.randint(0, self._map.get_max_y() - 1)
                     pos = Position(x, y)
                     tile = self.get_tile_data(pos)
 
-                    # Só coloca se for Empty e não tiver parede
-                    # Verifica também se não há agentes em cima
-                    agent_here = False
-                    for adata in self._agent_data.values():
-                        if adata.pos == pos:
-                            agent_here = True
-                            break
+                    agent_here = any(adata.pos == pos for adata in self._agent_data.values())
 
                     if tile.name == "Empty" and not tile.collideable and not agent_here:
                         self._map.add_entity(pos, "FOOD")
@@ -91,8 +83,7 @@ class Environment:
     def _pack_agents_positions(self) -> dict[Position, str]:
         positions = {}
         for agent, data in self._agent_data.items():
-            if not isinstance(agent, Navigator2D):
-                continue
+            if not isinstance(agent, Navigator2D): continue
             positions[data.pos] = data.char
         return positions
 
@@ -101,7 +92,6 @@ class Environment:
         self._map.render(positions)
 
     def get_objectives(self):
-        # Retorna todos os objetivos possíveis para os sensores padrão
         objs = {}
         for name in ["Objective", "OBJECTIVE", "Food", "FOOD", "Nest", "NEST"]:
             objs.update(self._map.get_entity_by_name(name))
@@ -112,8 +102,7 @@ class Environment:
 
     def get_tile_as_str(self, pos: Position) -> str:
         data = self._map.get_position_data(pos)
-        if data:
-            return data.name.upper()
+        if data: return data.name.upper()
         return "EMPTY"
 
     def validate_move(self, action: Action):
@@ -128,44 +117,58 @@ class Environment:
         target_pos = current_pos + direction
         tile = self.get_tile_data(target_pos)
 
+        # 1. Verifica Limites e Paredes
         if tile is None:
-            self.send_observation(agent, Observation.denied(action, -1.0))
+            self.send_observation(agent, Observation.denied(action, -1.0));
             return
         elif tile.collideable:
-            self.send_observation(agent, Observation.denied(action, -0.5))
+            self.send_observation(agent, Observation.denied(action, -0.5));
             return
 
+        # 2. Verifica Colisão com Agentes
         for o_agent, o_data in self._agent_data.items():
             if o_agent is agent: continue
             if o_data.pos == target_pos:
-                self.send_observation(agent, Observation.denied(action, -0.2))
+                self.send_observation(agent, Observation.denied(action, -0.2));
                 return
 
-        self._agent_data.get(agent).pos = target_pos
+        # 3. MOVIMENTO ACEITE
+        agent_data = self._agent_data.get(agent)
+        agent_data.pos = target_pos
+
+        # --- AUTO-PICKUP ---
+        if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"] and agent_data.carrying is None:
+            agent_data.carrying = 1.0
+            self._map.remove_entity(target_pos)
+            log().print(f">>> {agent.name} AUTO-PICKED {tile.name} at {target_pos}")
+            self.send_observation(agent, Observation.accepted(action, 50.0))
+            return
+
+        # --- AUTO-DROP ---
+        if tile.name.upper() == "NEST" and agent_data.carrying is not None:
+            reward = 100.0 * agent_data.carrying
+            agent_data.carrying = None
+            log().print(f">>> {action.agent.name} AUTO-DEPOSITED at NEST!")
+            self.send_observation(agent, Observation.accepted(action, reward))
+            return
+
         self.send_observation(agent, Observation.accepted(action, -1.0))
 
     def agent_pick(self, action: Action):
         agent_data = self._agent_data[action.agent]
         tile = self.get_tile_data(agent_data.pos)
-
         if tile is None:
             self.send_observation(action.agent, Observation.none())
             return
 
-        log().vprint(f"env: {action.agent.name} picking at {tile.name}")
-
-        # Lighthouse
         if tile.name.upper() == "OBJECTIVE":
             self.send_observation(action.agent, Observation.terminate(action, 100.0))
             return
 
-        # Foraging
         if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"]:
             if agent_data.carrying is None:
                 agent_data.carrying = 1.0
-
                 self._map.remove_entity(agent_data.pos)
-
                 self.send_observation(action.agent, Observation.accepted(action, 50.0))
             else:
                 self.send_observation(action.agent, Observation.denied(action, -0.1))
@@ -176,11 +179,9 @@ class Environment:
     def agent_drop(self, action: Action):
         agent_data = self._agent_data[action.agent]
         tile = self.get_tile_data(agent_data.pos)
-
         if agent_data.carrying is not None and tile.name.upper() == "NEST":
             reward = 100.0
             agent_data.carrying = None
-            log().print(f"{action.agent.name} DELIVERED!")
             self.send_observation(action.agent, Observation.accepted(action, reward))
         else:
             self.send_observation(action.agent, Observation.denied(action, -0.1))
@@ -188,55 +189,54 @@ class Environment:
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}
         sensor_data = {}
-
-        # 1. Gera dados normais
         for handler_name, handler_inst in self._handlers.items():
             sensor_data[handler_name] = handler_inst.handle(self._agent_data[agent], self)
 
-        # 2. Fix para Foraging: Ajustar direção com base na carga
+        # HACK DE SENSOR
         if self.problem_type == "foraging" and "directions" in sensor_data:
             agent_data = self._agent_data[agent]
             current_pos = agent_data.pos
             target_pos = None
 
-            # Se carrega comida -> Alvo é NINHO
             if agent_data.carrying is not None:
                 nests = self._map.get_entity_by_name("Nest")
                 if not nests: nests = self._map.get_entity_by_name("NEST")
                 if nests:
-                    target_pos = list(nests.keys())[0]
-
-            # Se está vazio -> Alvo é COMIDA mais próxima
+                    # Ninho mais próximo
+                    min_dist = float('inf')
+                    best_n = None
+                    for n_pos in nests.keys():
+                        dist = abs(n_pos.x - current_pos.x) + abs(n_pos.y - current_pos.y)
+                        if dist < min_dist: min_dist = dist; best_n = n_pos
+                    target_pos = best_n
             else:
                 foods = self._map.get_entity_by_name("Food")
                 if not foods: foods = self._map.get_entity_by_name("FOOD")
-
                 if foods:
                     min_dist = float('inf')
                     best_f = None
                     for f_pos in foods.keys():
                         dist = abs(f_pos.x - current_pos.x) + abs(f_pos.y - current_pos.y)
-                        if dist < min_dist:
-                            min_dist = dist
-                            best_f = f_pos
+                        if dist < min_dist: min_dist = dist; best_f = f_pos
                     target_pos = best_f
 
-            # Sobrescreve a direção
             if target_pos:
                 diff = target_pos - current_pos
-                dx_val, dy_val = 0, 0
-                if diff.x > 0: dx_val = 1
-                elif diff.x < 0: dx_val = -1
-                if diff.y > 0: dy_val = 1
-                elif diff.y < 0: dy_val = -1
+                if diff.x == 0 and diff.y == 0:
+                    dir_x, dir_y = Direction.NONE, Direction.NONE
+                else:
+                    dx_val, dy_val = 0, 0
+                    if diff.x > 0:
+                        dx_val = 1
+                    elif diff.x < 0:
+                        dx_val = -1
+                    if diff.y > 0:
+                        dy_val = 1
+                    elif diff.y < 0:
+                        dy_val = -1
 
-                dir_x = Direction.NONE
-                if dx_val == 1: dir_x = Direction.RIGHT
-                elif dx_val == -1: dir_x = Direction.LEFT
-
-                dir_y = Direction.NONE
-                if dy_val == 1: dir_y = Direction.DOWN
-                elif dy_val == -1: dir_y = Direction.UP
+                    dir_x = Direction.RIGHT if dx_val == 1 else (Direction.LEFT if dx_val == -1 else Direction.NONE)
+                    dir_y = Direction.DOWN if dy_val == 1 else (Direction.UP if dy_val == -1 else Direction.NONE)
 
                 if hasattr(sensor_data["directions"].payload, 'direction'):
                     sensor_data["directions"].payload.direction = (dir_x, dir_y)
