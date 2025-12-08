@@ -6,13 +6,13 @@ from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
 from component.observation import Observation, ObservationType
+from component.reward import REWARD
 from component.sensor.registry import HANDLER_REGISTRY
 from core.logger import log
 from core.renderer.r_handle import Renderer
 from map.entity import AgentData, MapEntity
 from map.map import Map
 from map.position import Position
-
 
 class Environment:
     _agent_data: dict[Agent, AgentData]
@@ -86,6 +86,9 @@ class Environment:
             if not isinstance(agent, Navigator2D): continue
             positions[data.pos] = data.char
         return positions
+
+    def get_map_size(self) -> tuple[int,int]:
+        return self._map.get_size()
 
     def render(self):
         positions = self._pack_agents_positions()
@@ -167,7 +170,7 @@ class Environment:
             return
 
         if tile.name.upper() == "OBJECTIVE":
-            self.send_observation(action.agent, Observation.terminate(action, 100.0))
+            self.send_observation(action.agent, Observation.terminate(action, tile.reward))
             return
 
         if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"]:

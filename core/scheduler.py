@@ -6,8 +6,9 @@ from component.action import Action
 @final
 class Scheduler:
 
-    def __init__(self):
+    def __init__(self, max_steps: int):
         self._step = 0
+        self._max_steps = max_steps
         self._queue = {}
         self._last_queue_key = 5
 
@@ -20,6 +21,9 @@ class Scheduler:
 
     def current_task(self) -> Union[Action, None]:
         return self._queue.get(self._step)
+
+    def out_of_steps(self) -> bool:
+        return self._step == self._max_steps
 
     def schedule(self, action: Action):
         if self._step > self._last_queue_key:
