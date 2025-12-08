@@ -18,12 +18,17 @@ class State:
         self.file = open(file_dir, "a", buffering=1)
 
     def update_sensor_data(self, after_action: bool = False, bundle: ObservationBundle | None = None) -> None:
-        if not after_action:
-            self.pre_sensor_data = self.post_sensor_data
+        if bundle is None:
+            if not after_action:
+                self.pre_sensor_data = self.post_sensor_data
+                return
+
+            self.post_sensor_data = self.pre_sensor_data
             return
 
-        if bundle is None:
-            raise ValueError("Bundle is None")
+        if not after_action:
+            self.pre_sensor_data = bundle
+            return
 
         self.post_sensor_data = bundle
 

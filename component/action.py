@@ -12,7 +12,7 @@ class Action:
     params: Dict[str, Any]
 
     def __post_init__(self):
-        print(f"created action {self.name} by {self.agent} with params {self.params}")
+        #print(f"created action {self.name} by {self.agent} with params {self.params}")
         self.agent.state.update_action_taken(self)
 
 class ActionResponse(Enum):

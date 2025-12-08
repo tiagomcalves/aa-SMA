@@ -1,5 +1,7 @@
 # core/sim.py
 from __future__ import annotations
+
+import math
 from argparse import Namespace
 from typing import final
 import time
@@ -27,7 +29,7 @@ class Simulator:
 
     def __init__(self, env: Environment, agents: list[Agent], args: Namespace):
         self.args = args
-        self._scheduler = Scheduler()
+        self._scheduler = Scheduler(self._calculate_max_steps())
         self._name = args.problem
         self._STEP_SECONDS = args.step / 1000 if not self.args.train else 0
         self._env = env
