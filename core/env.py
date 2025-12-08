@@ -136,27 +136,32 @@ class Environment:
         agent_data = self._agent_data.get(agent)
         agent_data.pos = target_pos
 
-        # --- AUTO-PICKUP ---
-        if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"] and agent_data.carrying is None:
+        # --- AUTO-PICKUP (CRÍTICO) ---
+        tile_name = tile.name.upper()
+
+        if tile_name in ["FOOD", "RESOURCE", "GARBAGE"] and agent_data.carrying is None:
             agent_data.carrying = 1.0
-            self._map.remove_entity(target_pos)
-            log().print(f">>> {agent.name} AUTO-PICKED {tile.name} at {target_pos}")
+            self._map.remove_entity(target_pos)  # Remove visualmente AGORA
+            log().print(f">>> {agent.name} AUTO-PICKED {tile_name} at {target_pos}")
             self.send_observation(agent, Observation.accepted(action, 50.0))
             return
 
         # --- AUTO-DROP ---
-        if tile.name.upper() == "NEST" and agent_data.carrying is not None:
+        if tile_name == "NEST" and agent_data.carrying is not None:
             reward = 100.0 * agent_data.carrying
             agent_data.carrying = None
             log().print(f">>> {action.agent.name} AUTO-DEPOSITED at NEST!")
             self.send_observation(agent, Observation.accepted(action, reward))
             return
 
+        # Movimento normal
         self.send_observation(agent, Observation.accepted(action, -1.0))
 
     def agent_pick(self, action: Action):
+        # Fallback para pick manual
         agent_data = self._agent_data[action.agent]
         tile = self.get_tile_data(agent_data.pos)
+
         if tile is None:
             self.send_observation(action.agent, Observation.none())
             return
@@ -179,6 +184,7 @@ class Environment:
     def agent_drop(self, action: Action):
         agent_data = self._agent_data[action.agent]
         tile = self.get_tile_data(agent_data.pos)
+
         if agent_data.carrying is not None and tile.name.upper() == "NEST":
             reward = 100.0
             agent_data.carrying = None
@@ -192,7 +198,7 @@ class Environment:
         for handler_name, handler_inst in self._handlers.items():
             sensor_data[handler_name] = handler_inst.handle(self._agent_data[agent], self)
 
-        # HACK DE SENSOR
+        # HACK SENSOR DIREÇÃO
         if self.problem_type == "foraging" and "directions" in sensor_data:
             agent_data = self._agent_data[agent]
             current_pos = agent_data.pos
@@ -202,7 +208,6 @@ class Environment:
                 nests = self._map.get_entity_by_name("Nest")
                 if not nests: nests = self._map.get_entity_by_name("NEST")
                 if nests:
-                    # Ninho mais próximo
                     min_dist = float('inf')
                     best_n = None
                     for n_pos in nests.keys():

@@ -22,17 +22,29 @@ class Handler(ABC):
 @registry.register_handler("surroundings")
 class SurroundingsHandler(Handler):
     def handle(self, agent_data: AgentData, env) -> Observation:
-        surroundings_data = {
-            Direction.NONE: env.get_tile_as_str(agent_data.pos),
-            Direction.UP: env.get_tile_as_str(agent_data.pos + Direction.UP),
-            Direction.DOWN: env.get_tile_as_str(agent_data.pos + Direction.DOWN),
-            Direction.LEFT: env.get_tile_as_str(agent_data.pos + Direction.LEFT),
-            Direction.RIGHT: env.get_tile_as_str(agent_data.pos + Direction.RIGHT)
-        }
+        # APENAS as 4 direções cardinais
+        surroundings_data = {}
 
-        # Envolvemos o dict num Payload para o agente poder fazer .cells
+        # Verifica UP
+        up_pos = agent_data.pos + Direction.UP
+        surroundings_data[Direction.UP] = env.get_tile_as_str(up_pos)
+
+        # Verifica DOWN
+        down_pos = agent_data.pos + Direction.DOWN
+        surroundings_data[Direction.DOWN] = env.get_tile_as_str(down_pos)
+
+        # Verifica LEFT
+        left_pos = agent_data.pos + Direction.LEFT
+        surroundings_data[Direction.LEFT] = env.get_tile_as_str(left_pos)
+
+        # Verifica RIGHT
+        right_pos = agent_data.pos + Direction.RIGHT
+        surroundings_data[Direction.RIGHT] = env.get_tile_as_str(right_pos)
+
+        # NÃO inclui Direction.NONE!
+        # O agente já sabe onde está através do sensor "location"
+
         payload = Payload(cells=surroundings_data)
-
         return Observation(ObservationType.SURROUNDINGS, payload)
 
 
