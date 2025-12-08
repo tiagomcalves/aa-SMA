@@ -7,16 +7,18 @@ import os
 
 
 class Logger:
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False, problem_name="default"):
         self.verbose = verbose
+        self.problem_name = problem_name
         self.learning_loggers: Dict[str, LearningLogger] = {}
         self.test_loggers: Dict[str, TestLogger] = {}
 
-        # Cria diretórios necessários
-        os.makedirs("logs/learning", exist_ok=True)
-        os.makedirs("logs/test", exist_ok=True)
+        # Cria diretórios para o problema específico
+        if self.problem_name:
+            os.makedirs(f"logs/{self.problem_name}/learning", exist_ok=True)
+            os.makedirs(f"logs/{self.problem_name}/test", exist_ok=True)
 
-        print(f"Logger initialized {'--verbose' if verbose else ''}")
+        print(f"Logger initialized for problem: {self.problem_name} {'--verbose' if verbose else ''}")
 
     def print(self, *args, **kwargs) -> None:
         print(*args, **kwargs)
@@ -31,7 +33,7 @@ class Logger:
     def create_learning_logger(self, agent_name: str, config: Dict[str, Any] = None) -> 'LearningLogger':
         """Cria um logger específico para aprendizagem do agente"""
         if agent_name not in self.learning_loggers:
-            self.learning_loggers[agent_name] = LearningLogger(agent_name, config or {})
+            self.learning_loggers[agent_name] = LearningLogger(agent_name, config or {}, self.problem_name)
             self.vprint(f"📝 Created learning logger for agent: {agent_name}")
         return self.learning_loggers[agent_name]
 
@@ -55,7 +57,7 @@ class Logger:
     def create_test_logger(self, test_name: str) -> 'TestLogger':
         """Cria um logger específico para modo de teste"""
         if test_name not in self.test_loggers:
-            self.test_loggers[test_name] = TestLogger(test_name)
+            self.test_loggers[test_name] = TestLogger(test_name, self.problem_name)
             self.vprint(f"🧪 Created test logger: {test_name}")
         return self.test_loggers[test_name]
 
@@ -81,22 +83,26 @@ class Logger:
         self.vprint("✅ All logs saved")
 
     @staticmethod
-    def initialize(verbose=False) -> None:
+    def initialize(verbose=False, problem_name="default") -> None:  # CORRIGIDO: aceita 2 argumentos
         global _logger
-        _logger = Logger(verbose)
+        _logger = Logger(verbose, problem_name)
 
 
 class LearningLogger:
-    """Logger para registar dados de aprendizagem por episódio"""
-
-    def __init__(self, agent_name: str, config: Dict[str, Any]):
+    def __init__(self, agent_name: str, config: Dict[str, Any], problem_name: str = "default"):
         self.agent_name = agent_name
         self.config = config
+        self.problem_name = problem_name
 
         # Cria nome de ficheiro único com timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.csv_file = f"logs/learning/{agent_name}_{timestamp}.csv"
-        self.json_file = f"logs/learning/{agent_name}_qtable_{timestamp}.json"
+
+        # Diretório específico do problema
+        log_dir = f"logs/{problem_name}/learning"
+        os.makedirs(log_dir, exist_ok=True)
+
+        self.csv_file = f"{log_dir}/{agent_name}_{timestamp}.csv"
+        self.json_file = f"{log_dir}/{agent_name}_qtable_{timestamp}.json"
 
         # Inicializa ficheiros
         self._init_csv_file()
@@ -115,21 +121,6 @@ class LearningLogger:
     def log_episode(self, episode_data: Dict[str, Any]):
         """
         Regista um episódio de aprendizagem
-
-        episode_data deve conter:
-        - episode (int): número do episódio
-        - total_reward (float): recompensa total
-        - steps (int): número de passos
-        - success (bool): se foi bem sucedido
-        - epsilon (float): valor atual do epsilon
-        - learning_rate (float): taxa de aprendizagem
-        - discount_factor (float): fator de desconto
-        - q_table_size (int): tamanho da Q-table
-        - successful_returns (int): número de entregas bem sucedidas
-        - food_collected (int): comida coletada
-        - food_delivered (int): comida entregue
-        - avg_reward_last_10 (float, opcional): média últimos 10 episódios
-        - success_rate_last_10 (float, opcional): taxa sucesso últimos 10
         """
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -204,16 +195,19 @@ class LearningLogger:
 
 
 class TestLogger:
-    """Logger para registar resultados de teste"""
-
-    def __init__(self, test_name: str):
+    def __init__(self, test_name: str, problem_name: str = "default"):
         self.test_name = test_name
+        self.problem_name = problem_name
         self.results = []
+
+        # Diretório específico do problema
+        log_dir = f"logs/{problem_name}/test"
+        os.makedirs(log_dir, exist_ok=True)
 
         # Ficheiros de output
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.json_file = f"logs/test/{test_name}_{timestamp}.json"
-        self.csv_file = f"logs/test/{test_name}_{timestamp}.csv"
+        self.json_file = f"{log_dir}/{test_name}_{timestamp}.json"
+        self.csv_file = f"{log_dir}/{test_name}_{timestamp}.csv"
 
     def log_result(self, result_data: Dict[str, Any]):
         """Regista um resultado de teste"""
@@ -266,8 +260,8 @@ class TestLogger:
         discounted_rewards = []
         for r in self.results:
             reward = r.get('total_reward', 0)
-            steps = r.get('steps', 1)
-            discounted = reward * (0.9 ** (steps - 1))  # γ^(t-1)
+            steps_count = r.get('steps', 1)
+            discounted = reward * (0.9 ** (steps_count - 1))  # γ^(t-1)
             discounted_rewards.append(discounted)
 
         avg_discounted = sum(discounted_rewards) / len(discounted_rewards) if discounted_rewards else 0
@@ -321,12 +315,12 @@ def log() -> Logger:
 # ---------------------------------------------------
 # FUNÇÕES ÚTEIS PARA ANÁLISE
 # ---------------------------------------------------
-def load_learning_data(agent_name: str = None):
+def load_learning_data(problem_name: str, agent_name: str = None):
     """Carrega dados de aprendizagem para análise"""
     import pandas as pd
     import os
 
-    log_dir = "logs/learning"
+    log_dir = f"logs/{problem_name}/learning"
     if not os.path.exists(log_dir):
         return None
 
@@ -356,15 +350,15 @@ def load_learning_data(agent_name: str = None):
     return None
 
 
-def print_learning_summary(agent_name: str):
+def print_learning_summary(problem_name: str, agent_name: str):
     """Imprime sumário da aprendizagem"""
-    data = load_learning_data(agent_name)
+    data = load_learning_data(problem_name, agent_name)
 
     if data is None or data.empty:
-        print(f"📭 No learning data found for agent: {agent_name}")
+        print(f"📭 No learning data found for agent {agent_name} in problem {problem_name}")
         return
 
-    print(f"\n📊 RESUMO DE APRENDIZAGEM: {agent_name}")
+    print(f"\n📊 RESUMO DE APRENDIZAGEM: {agent_name} ({problem_name})")
     print(f"📈 Total de episódios: {len(data)}")
     print(f"💰 Recompensa média: {data['total_reward'].mean():.2f}")
     print(f"👣 Passos médios: {data['steps'].mean():.1f}")
