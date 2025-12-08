@@ -3,7 +3,6 @@ from abstract.nav2d import Navigator2D
 from component.action import Action
 from component.direction import Direction
 from component.observation import Observation, ObservationType
-from core.logger import log
 from map.position import Position
 
 
@@ -13,40 +12,39 @@ class Ferb(Navigator2D):
         super().__init__(problem, name, properties)
         self._position = Position(*properties["starting_position"])
         self.char = properties["char"]
-        self.temp_mem_moves = []  # Memória de curto prazo para não andar aos círculos
-        self.last_move = Direction.NONE
+
+        # Inércia
+        self.current_direction = random.choice([Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT])
         self.carrying = False
         self.last_attempted_action = None
 
+        # Heurística de Ninho (Canto Superior Esquerdo por defeito)
+        self.nest_position = Position(1, 1)
+
     def observation(self, obs: Observation):
         if obs.type == ObservationType.ACCEPTED:
-            # Atualiza estado de carga
-            if self.last_attempted_action:
+            # Auto-Pickup Detection
+            if obs.payload.reward >= 40.0:
+                self.carrying = not self.carrying  # Toggle se receber grande recompensa
+
+            elif self.last_attempted_action:
                 if self.last_attempted_action.name == "pick":
                     self.carrying = True
                 elif self.last_attempted_action.name == "drop":
                     self.carrying = False
 
-            # Adiciona o movimento oposto à memória para evitar voltar para trás imediatamente
-            if self.last_move != Direction.NONE:
-                self.temp_mem_moves.append(self.last_move.opposite())
-                # Mantém a memória curta (últimos 4 movimentos)
-                if len(self.temp_mem_moves) > 4:
-                    self.temp_mem_moves.pop(0)
-
         elif obs.type == ObservationType.DENIED:
-            # Se bateu, limpa a memória para tentar outros caminhos
-            self.temp_mem_moves.clear()
+            # Se bateu (apesar do filtro), força mudança
+            self.current_direction = Direction.NONE
 
     def act(self) -> Action:
         if not self.has_observations():
-            # Força update dos sensores se não tiver dados
             obs = self._sensor.get_info(self)
             self.state.update_sensor_data(True, obs)
             self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
             self.curr_observations[ObservationType.LOCATION] = obs.location
 
-        # 1. INSTINTO (Prioridade Máxima)
+        # 1. INSTINTO (Pick / Drop)
         obs_loc = self.curr_observations.get(ObservationType.LOCATION)
         if obs_loc:
             tile = getattr(obs_loc.payload, 'tile_name', "").upper()
@@ -59,32 +57,51 @@ class Ferb(Navigator2D):
                 self.last_attempted_action = act;
                 return act
 
-        # 2. MOVIMENTO
+        # 2. FILTRO DE PAREDES (BARREIRA LÓGICA)
         obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
-        valid_moves = []
 
+        # Lista de tiles proibidos
+        walls = ["WALL", "OBSTACLE", "Wall", "Obstacle", "#", "X"]
+
+        # Só aceita direções que NÃO são paredes
+        free_moves = []
         if obs_surr:
-            # Filtra paredes e obstáculos
-            valid_moves = [
-                d for d, c in obs_surr.payload.cells.items()
-                if c not in ["WALL", "OBSTACLE", "Wall", "Obstacle"] and d != Direction.NONE
-            ]
+            for d, c in obs_surr.payload.cells.items():
+                if d != Direction.NONE and c.upper() not in walls:
+                    free_moves.append(d)
         else:
-            # Fallback se sensor falhar
-            valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+            # Fallback se sensor falhar (raro)
+            free_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
 
-        if not valid_moves:
+        # Se estiver encurralado, espera
+        if not free_moves:
             return self.action.wait()
 
-        good_opts = [d for d in valid_moves if d not in self.temp_mem_moves]
+        # 3. VERIFICAÇÃO DE INÉRCIA
+        # Se a direção atual bate numa parede (não está em free_moves), MUDA!
+        if self.current_direction not in free_moves:
+            self.current_direction = random.choice(free_moves)
 
-        final_move = None
-        if good_opts:
-            final_move = random.choice(good_opts)
-        else:
-            final_move = random.choice(valid_moves)
+        final_dir = self.current_direction
 
-        self.last_move = final_move
-        act = self.action.move(final_move)
+        # 4. MODO RETORNO (Se tiver carga, tenta ir para o Ninho)
+        if self.carrying:
+            best_dist = float('inf')
+            best_move = None
+
+            # Escolhe o melhor movimento APENAS da lista free_moves
+            for move in free_moves:
+                next_pos = self._position + move
+                diff = self.nest_position - next_pos
+                dist = (diff.x ** 2) + (diff.y ** 2)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_move = move
+
+            if best_move:
+                final_dir = best_move
+
+        # Executa
+        act = self.action.move(final_dir)
         self.last_attempted_action = act
         return act
