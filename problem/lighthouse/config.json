@@ -13,9 +13,12 @@
   },
 
   "agents": {
-    "2D_Explorer": {
-      "starting_position": [3, 0],
-      "char": "E"
+    "Phineas_The_Explorer": {
+      "starting_position": [0, 6],
+      "char": "P",
+      "learning_rate": 0.1,
+      "discount_factor": 0.9,
+      "epsilon": 0.1
     }
   }
 }

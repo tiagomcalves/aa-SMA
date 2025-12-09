@@ -1,0 +1,1 @@
+episode,total_reward,steps,success,timestamp,epsilon,learning_rate,discount_factor,q_table_size,successful_returns,food_collected,food_delivered,avg_reward_last_10,success_rate_last_10
