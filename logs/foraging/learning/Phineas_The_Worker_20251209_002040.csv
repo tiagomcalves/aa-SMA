@@ -1,0 +1,2 @@
+episode,total_reward,steps,success,timestamp,epsilon,learning_rate,discount_factor,q_table_size,successful_returns,food_collected,food_delivered,avg_reward_last_10,success_rate_last_10
+7,20.9,40,1,2025-12-09 00:20:43,0.097,0.0,0.0,0,0,1,0,0.0,0.0

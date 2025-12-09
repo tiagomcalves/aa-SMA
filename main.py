@@ -31,7 +31,7 @@ def main():
                         action='store_true')
     parser.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)',
                         type=int, metavar="ms")
-    parser.add_argument('-t', '--train', help='training mode', action='store_true')
+    parser.add_argument('-t', '--test', help='testing mode', action='store_true')
     parser.add_argument('-v', '--verbose', help="enable verbose output", action='store_true')
 
     if len(sys.argv) == 1:
