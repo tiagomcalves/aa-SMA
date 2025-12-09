@@ -108,7 +108,7 @@ class DeniedPayload:
 
 @dataclass
 class LocationPayload:
-    distance: float
+    tile: str
 
 
 @dataclass
@@ -154,5 +154,5 @@ class ObservationBundle:
         elif obs_type == ObservationType.DIRECTION and self.directions is not None:
             return self.directions.payload.direction
         elif obs_type == ObservationType.LOCATION and self.location is not None:
-            return self.location.payload.distance
+            return self.location.payload.tile
         return None

@@ -39,7 +39,7 @@ class Simulator:
         log_dir = f"logs/{self._name}"
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(f"{log_dir}/learning", exist_ok=True)
-        os.makedirs(f"{log_dir}/test", exist_ok=True)
+        os.makedirs(f"{log_dir}/test", exist_ok=True)   # remove
 
     @staticmethod
     def create(args: Namespace) -> Simulator:
@@ -106,17 +106,13 @@ class Simulator:
             if hasattr(a, "start_episode"): a.start_episode()
             a.status = AgentStatus.RUNNING
 
-        while True:
+        while not self._scheduler.out_of_steps():
             for a in self._agents[:]:
                 if a.status == AgentStatus.TERMINATED:
                     self.terminate_agent(a)
                     continue
 
             if len(self._agents) == 0: break
-
-            if self._scheduler.curr_step() >= self.max_steps:
-                log().print(f"MAX STEPS ALCANÇADO: {self.max_steps}")
-                break
 
             self._env.update()
 
@@ -139,7 +135,7 @@ class Simulator:
             self.think()
 
         log().print("============================================================")
-        log().print("SIMULAÇÃO CONCLUÍDA")
+        log().print(f"SIMULAÇÃO CONCLUÍDA {"(MAX STEPS ALCANÇADO)" if self._scheduler.out_of_steps() else ""}")
         log().print(f"Total de steps: {self._scheduler.curr_step()}")
 
     def _boot_output(self) -> None:

@@ -395,7 +395,7 @@ class Phineas(Navigator2D):
         # Ações imediatas - pick ou drop
         obs_loc = self.curr_observations.get(ObservationType.LOCATION)
         if obs_loc:
-            tile = getattr(obs_loc.payload, 'tile_name', "").upper()
+            tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
             if self.problem == "foraging":
                 if not self.carrying and tile in ["FOOD", "RESOURCE"]:
                     act = self.action.pick()
@@ -406,6 +406,7 @@ class Phineas(Navigator2D):
                     self.last_attempted_action = act
                     return act
             elif self.problem == "lighthouse" and tile in ["OBJECTIVE", "O", "@"]:
+                log().print(f"agent {self.name} trying to pick OBJECTIVE")
                 act = self.action.pick()
                 self.last_attempted_action = act
                 return act
