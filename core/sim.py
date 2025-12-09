@@ -212,7 +212,7 @@ class Simulator:
                         # Cria payload simples para terminate
                         terminate_payload = {"action": None, "reward": 0.0}
                         terminate_obs = Observation(
-                            type=ObservationType.TERMINATE,
+                            o_type=ObservationType.TERMINATE,
                             payload=terminate_payload
                         )
                         agent.observation(terminate_obs)
