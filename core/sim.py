@@ -2,11 +2,7 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import final
 import time
-import sys
 import os
-
-import agent.phineas
-import agent.ferb
 
 from abstract import Agent
 from abstract.agent import AgentStatus
@@ -25,7 +21,7 @@ class Simulator:
     def __init__(self, env: Environment, agents: list[Agent], args: Namespace):
         self.args = args
         self._name = args.problem
-        self._STEP_SECONDS = args.step / 1000 if not self.args.train else 0
+        self._STEP_SECONDS = args.step / 1000 if not self.args.test else 0
 
         # Cria diretório de logs
         self._create_log_directory()
@@ -57,7 +53,7 @@ class Simulator:
         for a_key, a_data in agents_json_data.items():
             is_ferb = "Ferb" in a_key or "ferb" in a_data.get("class", "")
 
-            if args.train:
+            if not args.test:
                 if "Phineas" in a_key or "phineas" in a_key.lower():
                     a_data["class"] = "agent.phineas.Phineas"
                     a_data["mode"] = "LEARNING"
@@ -101,7 +97,7 @@ class Simulator:
     def terminate_agent(self, agent) -> bool:
         if agent in self.list_agents():
             self.list_agents().remove(agent)
-            log().print(f"🏁 {agent.name} terminado")
+            log().print(f"{agent.name} terminado")
             return True
         return False
 
@@ -119,7 +115,7 @@ class Simulator:
             if len(self._agents) == 0: break
 
             if self._scheduler.curr_step() >= self.max_steps:
-                log().print(f"🏁 MAX STEPS ALCANÇADO: {self.max_steps}")
+                log().print(f"MAX STEPS ALCANÇADO: {self.max_steps}")
                 break
 
             self._env.update()
@@ -128,29 +124,29 @@ class Simulator:
                 action = a.act()
                 self._env.act(action, a)
 
-            should_render = self.args.renderer and (not self.args.train or not self.args.headless)
+            should_render = self.args.renderer and (not self.args.test or not self.args.headless)
             if should_render:
                 self._env.render()
-                if not self.args.train:
+                if not self.args.test:
                     time.sleep(self._STEP_SECONDS)
                 else:
                     time.sleep(0.001)
 
-            if not self.args.train:
+            if not self.args.test:
                 log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
                 log().print("-----------------------------------------------")
 
             self.think()
 
         log().print("============================================================")
-        log().print("🏁 SIMULAÇÃO CONCLUÍDA")
-        log().print(f"📊 Total de steps: {self._scheduler.curr_step()}")
+        log().print("SIMULAÇÃO CONCLUÍDA")
+        log().print(f"Total de steps: {self._scheduler.curr_step()}")
 
     def _boot_output(self) -> None:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
         log().print(f"""------------------------------------------------
 Simulation: \"{self._name}\"
-Mode: {"TRAINING" if self.args.train else "TESTING"}
+Mode: {"TRAINING" if not self.args.test else "TESTING"}
 Max Steps: {self.max_steps}
 Logs: logs/{self._name}/
 Agents: {len(self._agents)} loaded
