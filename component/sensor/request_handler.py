@@ -19,6 +19,13 @@ class Handler(ABC):
         pass
 
 
+@registry.register_handler("location")
+class LocationHandler(Handler):
+    def handle(self, agent_data: AgentData, env) -> Observation:
+
+        payload = Payload(tile=env.get_tile_as_str(agent_data.pos))
+        return Observation(ObservationType.LOCATION, payload)
+
 @registry.register_handler("surroundings")
 class SurroundingsHandler(Handler):
     def handle(self, agent_data: AgentData, env) -> Observation:

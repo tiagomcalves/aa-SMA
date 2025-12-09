@@ -1,6 +1,6 @@
 {
   "environment": {
-    "sensor_handlers": ["surroundings", "directions"],
+    "sensor_handlers": ["surroundings", "directions", "location"],
     "map": {
       "file": "map_example",
       "boundaries": [10, 10],
