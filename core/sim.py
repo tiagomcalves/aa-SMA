@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+import copy
 from argparse import Namespace
-from typing import final
+from dataclasses import dataclass
+from typing import final, Optional
 import time
 import os
 
@@ -14,21 +17,28 @@ from core.module_importer import import_sensor_handlers
 from component.sensor.sensor import Sensor
 from map.position import Position
 
+@dataclass(frozen=True)
+class EnvInitialState:
+    env : Environment
+
 
 @final
 class Simulator:
+
+    initial_state : Optional[EnvInitialState] = None
 
     def __init__(self, env: Environment, agents: list[Agent], args: Namespace):
         self.args = args
         self._name = args.problem
         self._STEP_SECONDS = args.step / 1000 if not self.args.test else 0
+        self._active_agents = 0
 
         # Cria diretório de logs
         self._create_log_directory()
 
         # Define max steps
         self.max_steps = 1000
-        self._scheduler = Scheduler(self.max_steps)
+        self._scheduler = Scheduler(self.max_steps, args.learn if args.learn is not None else 1)
 
         self._env = env
         self._agents = agents
@@ -86,6 +96,7 @@ class Simulator:
             agent.set_env(env)
             agent.install(sensor)
 
+        Simulator.initial_state = EnvInitialState(env.clone())
         return Simulator(env, agents_ref_list, args)
 
     def list_agents(self) -> list[Agent]:
@@ -96,47 +107,65 @@ class Simulator:
 
     def terminate_agent(self, agent) -> bool:
         if agent in self.list_agents():
-            self.list_agents().remove(agent)
-            log().print(f"{agent.name} terminado")
+
+            if self._scheduler.is_last_episode():
+                self.list_agents().remove(agent)
+                log().print(f"{agent.name} terminado")
+
+            self._active_agents -= 1
             return True
         return False
 
     def run(self) -> None:
-        for a in self._agents:
-            if hasattr(a, "start_episode"): a.start_episode()
-            a.status = AgentStatus.RUNNING
 
-        while not self._scheduler.out_of_steps():
-            for a in self._agents[:]:
-                if a.status == AgentStatus.TERMINATED:
-                    self.terminate_agent(a)
-                    continue
+        while not self._scheduler.out_of_episode():
 
-            if len(self._agents) == 0: break
-
-            self._env.update()
+            if self.args.learn:
+                log().print(f"Episódio {self._scheduler.curr_episode() + 1}")
 
             for a in self._agents:
-                action = a.act()
-                self._env.act(action, a)
+                if hasattr(a, "start_episode"): a.start_episode()
+                a.status = AgentStatus.RUNNING
+                self._active_agents += 1
 
-            should_render = self.args.renderer and (not self.args.test or not self.args.headless)
-            if should_render:
-                self._env.render()
+            while not self._scheduler.out_of_steps():
+                for a in self._agents[:]:
+                    if a.status == AgentStatus.TERMINATED:
+                        self.terminate_agent(a)
+                        continue
+
+                if self._active_agents == 0: break
+
+                self._env.update()
+
+                for a in self._agents:
+                    action = a.act()
+                    self._env.act(action, a)
+
+                should_render = self.args.renderer and (not self.args.test or not self.args.headless)
+                if should_render:
+                    self._env.render()
+                    if not self.args.test:
+                        time.sleep(self._STEP_SECONDS)
+                    else:
+                        time.sleep(0.001)
+
                 if not self.args.test:
-                    time.sleep(self._STEP_SECONDS)
-                else:
-                    time.sleep(0.001)
+                    log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
+                    log().print("-----------------------------------------------")
 
-            if not self.args.test:
-                log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
-                log().print("-----------------------------------------------")
+                self.think()
 
-            self.think()
+            log().print("============================================================")
+            log().print(f"EPISODIO CONCLUÍDO {"(MAX STEPS ALCANÇADO)" if self._scheduler.out_of_steps() else ""}")
+            log().print(f"Total de steps: {self._scheduler.curr_step()}")
 
-        log().print("============================================================")
-        log().print(f"SIMULAÇÃO CONCLUÍDA {"(MAX STEPS ALCANÇADO)" if self._scheduler.out_of_steps() else ""}")
-        log().print(f"Total de steps: {self._scheduler.curr_step()}")
+            self._scheduler.next_episode()
+            if not self._scheduler.out_of_episode():
+                self._env = self.initial_state.env.clone()
+
+        log().print(f"SIMULAÇÃO CONCLUÍDA")
+
 
     def _boot_output(self) -> None:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)

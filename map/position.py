@@ -60,5 +60,12 @@ class Position:
     def __repr__(self):
         return self.__str__()
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        new._pos = self._pos
+        return new
 
 Position.OUT_OF_BOUNDS = Position(-1, -1)
