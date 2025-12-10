@@ -31,6 +31,22 @@ class Map:
         self._load_map_settings(data)
         self._map_cells = self._load_map_grid("problem/" + problem + "/" + data["file"] + ".grid")
 
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        new = cls.__new__(cls)
+        memo[id(self)] = new
+
+        new._env = None
+
+        new._default_empty = copy.deepcopy(self._default_empty, memo)
+        new._char_entity_mapping = copy.deepcopy(self._char_entity_mapping, memo)
+        new._boundaries = copy.deepcopy(self._boundaries, memo)
+        new._map_cells = copy.deepcopy(self._map_cells, memo)
+
+        new._max_x = self._max_x
+        new._max_y = self._max_y
+        return new
+
     @staticmethod
     def _load_obst_schema(path: str) -> dict[str, MapEntity]:
         _char_to_ent = {}

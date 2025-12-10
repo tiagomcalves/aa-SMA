@@ -1,3 +1,4 @@
+import copy
 import random
 from typing import Optional
 
@@ -33,6 +34,32 @@ class Environment:
             raise ValueError(f"No sensor handler registered with name '{request_type}'")
         handler_instance = handler_cls()
         self._handlers[request_type] = handler_instance
+
+    def clone(self):
+        new_env = Environment.__new__(Environment)
+
+        # There are immutable so they can be referenced still
+        new_env.problem_type = self.problem_type
+        new_env._handlers = self._handlers
+        new_env.renderer = self.renderer
+
+        # deepcopy just the agent data, no need to copy the keys
+        # (because they are still referenced by the same agents from Simulator)
+        new_env._agent_data = {agent: copy.deepcopy(data) for agent, data in self._agent_data.items()}
+
+        # deepcopy of the Map, fresh map
+        new_env._map = Map.__new__(Map)
+        new_env._map._env = new_env
+        new_env._map._default_empty = copy.deepcopy(self._map._default_empty)
+        new_env._map._char_entity_mapping = self._map._char_entity_mapping  # immutable data so no need to deepcopy
+        new_env._map._boundaries = copy.deepcopy(self._map._boundaries)
+        new_env._map._map_cells = copy.deepcopy(self._map._map_cells)
+
+        new_env._map._max_x = self._map._max_x # just an int
+        new_env._map._max_y = self._map._max_y # same
+        new_env._map._boundaries = copy.deepcopy(self._map._boundaries) #deepcopy because its a Position
+
+        return new_env
 
     @staticmethod
     def setup_agent(name: str, data: dict) -> AgentData:

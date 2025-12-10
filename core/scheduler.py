@@ -6,9 +6,14 @@ from component.action import Action
 @final
 class Scheduler:
 
-    def __init__(self, max_steps: int):
+    def __init__(self, max_steps: int, max_episodes=1):
+        if max_episodes < 1 or max_steps < 1:
+            raise ValueError("Scheduler() max_steps and max_episodes must be >=1")
+
         self._step = 0
+        self._episode = 0
         self._max_steps = max_steps
+        self._max_episodes = max_episodes
         self._queue = {}
         self._last_queue_key = 5
 
@@ -33,3 +38,17 @@ class Scheduler:
             self._last_queue_key += 1
 
         self._queue[self._last_queue_key] = action
+
+    def next_episode(self):
+        self._queue.clear()
+        self._step = 0
+        self._episode += 1
+
+    def curr_episode(self) -> int:
+        return self._episode
+
+    def out_of_episode(self) -> bool:
+        return self._episode == self._max_episodes
+
+    def is_last_episode(self) -> bool:
+        return self._episode == self._max_episodes-1
