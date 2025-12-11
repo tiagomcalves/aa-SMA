@@ -91,11 +91,6 @@ class Simulator:
             for handler in env_data["sensor_handlers"]:
                 env.register_handler(handler)
 
-        sensor = Sensor(env)
-        for agent in agents_ref_list:
-            agent.set_env(env)
-            agent.install(sensor)
-
         Simulator.initial_state = EnvInitialState(env.clone())
         return Simulator(env, agents_ref_list, args)
 
@@ -123,10 +118,16 @@ class Simulator:
             if self.args.learn:
                 log().print(f"Episódio {self._scheduler.curr_episode() + 1}")
 
+            sensor = Sensor(self._env)
+
             for a in self._agents:
                 if hasattr(a, "start_episode"): a.start_episode()
                 a.status = AgentStatus.RUNNING
                 self._active_agents += 1
+                # (re)install sensor at the beginning of each episode
+                a.set_env(self._env)
+                a.install(sensor)
+
 
             while not self._scheduler.out_of_steps():
                 for a in self._agents[:]:
