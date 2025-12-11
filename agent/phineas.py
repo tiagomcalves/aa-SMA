@@ -488,21 +488,33 @@ class Phineas(Navigator2D):
     # ---------------------------------------------------
     def save_knowledge(self):
         try:
+            # 1. Dados Base (Comuns a todos os problemas)
             data = {
                 'q_table': self.q_table,
                 'visit_counts': self.visit_counts,
-                'known_nest': (self.known_nest_position.x, self.known_nest_position.y)
-                if self.known_nest_position else None,
-                'estimated_objective': (self.estimated_objective_position.x, self.estimated_objective_position.y)
-                if self.estimated_objective_position else None,
                 'total_rewards': self.episode_rewards,
                 'epsilon': self.epsilon,
                 'current_episode': self.current_episode,
-                'total_food_delivered': self.total_food_delivered
+                'problem_type': self.problem  # Ajuda a validar se o save é compatível
             }
+
+            # 2. Dados Espaciais e Estatísticos (Salva apenas se existirem/forem relevantes)
+
+            # Foraging: Ninho e Comida
+            if self.known_nest_position:
+                data['known_nest'] = (self.known_nest_position.x, self.known_nest_position.y)
+
+            data['total_food_collected'] = getattr(self, 'total_food_collected', 0)
+            data['total_food_delivered'] = getattr(self, 'total_food_delivered', 0)
+
+            # Lighthouse: Objetivo Estimado
+            if self.estimated_objective_position:
+                data['estimated_objective'] = (self.estimated_objective_position.x, self.estimated_objective_position.y)
+
+            # Escrita no disco
             with open(f"knowledge_{self.name}.pkl", "wb") as f:
                 pickle.dump(data, f)
-        except Exception as e:
+        except Exception:
             pass
 
     def load_knowledge(self):
@@ -512,17 +524,31 @@ class Phineas(Navigator2D):
                 with open(filename, "rb") as f:
                     data = pickle.load(f)
 
+                # Validação simples (opcional): Verifica se o save é do mesmo problema
+                # if data.get('problem_type') != self.problem: return
+
+                # 1. Restaura Cérebro
                 self.q_table = data.get('q_table', {})
                 self.visit_counts = data.get('visit_counts', {})
-                self.epsilon = data.get('epsilon', self.epsilon)
-                self.current_episode = data.get('current_episode', 0)
 
+                # 2. Restaura Progresso (apenas se estivermos a aprender)
+                if self.mode == "LEARNING":
+                    self.epsilon = data.get('epsilon', self.epsilon)
+                    self.current_episode = data.get('current_episode', 0)
+                else:
+                    self.current_episode = 0
+
+                # 3. Restaura Estatísticas
+                self.total_food_collected = data.get('total_food_collected', 0)
+                self.total_food_delivered = data.get('total_food_delivered', 0)
+
+                # 4. Restaura Memória Espacial (Funciona para ambos os problemas)
                 nest_pos = data.get('known_nest')
                 if nest_pos:
                     self.known_nest_position = Position(*nest_pos)
 
                 obj_pos = data.get('estimated_objective')
-                if obj_pos and self.problem == "lighthouse":
+                if obj_pos:
                     self.estimated_objective_position = Position(*obj_pos)
 
             except Exception:
