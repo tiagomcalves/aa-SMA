@@ -27,7 +27,7 @@ class Simulator:
 
     initial_state : Optional[EnvInitialState] = None
 
-    def __init__(self, env: Environment, agents: list[Agent], args: Namespace):
+    def __init__(self, env: Environment, agents: list[Agent], args: Namespace, timestamp: float):
         self.args = args
         self._name = args.problem
         self._STEP_SECONDS = args.step / 1000 if not self.args.test else 0
@@ -42,7 +42,7 @@ class Simulator:
 
         self._env = env
         self._agents = agents
-        self._curr_time = time.time()
+        self._curr_time = timestamp
         self._boot_output()
 
     def _create_log_directory(self):
@@ -52,7 +52,7 @@ class Simulator:
         os.makedirs(f"{log_dir}/test", exist_ok=True)   # remove
 
     @staticmethod
-    def create(args: Namespace) -> Simulator:
+    def create(args: Namespace, timestamp: float) -> Simulator:
         log().vprint("Passed arguments to simulator:\n", args)
         loader = ConfigLoader(args.problem)
         agents_json_data = loader.retrieve_data("agents")
@@ -62,7 +62,7 @@ class Simulator:
 
         for a_key, a_data in agents_json_data.items():
             is_ferb = "Ferb" in a_key or "ferb" in a_data.get("class", "")
-
+            a_data["timestamp"] = timestamp
             if not args.test:
                 if "Phineas" in a_key or "phineas" in a_key.lower():
                     a_data["class"] = "agent.phineas.Phineas"
@@ -92,7 +92,7 @@ class Simulator:
                 env.register_handler(handler)
 
         Simulator.initial_state = EnvInitialState(env.clone())
-        return Simulator(env, agents_ref_list, args)
+        return Simulator(env, agents_ref_list, args, timestamp)
 
     def list_agents(self) -> list[Agent]:
         return self._agents
@@ -107,6 +107,7 @@ class Simulator:
                 self.list_agents().remove(agent)
                 log().print(f"{agent.name} terminado")
 
+            agent.status = AgentStatus.IDLE
             self._active_agents -= 1
             return True
         return False

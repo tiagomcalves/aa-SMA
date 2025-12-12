@@ -512,13 +512,13 @@ class Phineas(Navigator2D):
                 data['estimated_objective'] = (self.estimated_objective_position.x, self.estimated_objective_position.y)
 
             # Escrita no disco
-            with open(f"knowledge_{self.name}.pkl", "wb") as f:
+            with open(f"kb_{self.name}_{self.timestamp}.pkl", "wb") as f:
                 pickle.dump(data, f)
         except Exception:
             pass
 
     def load_knowledge(self):
-        filename = f"knowledge_{self.name}.pkl"
+        filename = f"kb_{self.name}_{self.timestamp}.pkl"
         if os.path.exists(filename):
             try:
                 with open(filename, "rb") as f:

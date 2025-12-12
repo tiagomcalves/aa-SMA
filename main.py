@@ -4,6 +4,7 @@ import sys
 import time
 from pathlib import Path
 
+from core.graphs import GraphLoader
 from core.renderer.r_handle import Renderer
 from core.sim import Simulator
 from core.module_importer import import_agents
@@ -11,6 +12,7 @@ from core.logger import Logger
 
 
 def main():
+    timestamp = time.time()
     directory = Path("problem/")
     subdirs = [f.name for f in directory.iterdir() if f.is_dir()]
 
@@ -52,12 +54,18 @@ def main():
     Logger.initialize(verbose=args.verbose, problem_name=args.problem)  # CORRIGIDO
 
     import_agents()
-    sim = Simulator.create(args)
+    sim = Simulator.create(args, timestamp)
 
     if not args.autostart:
         input("Press <Enter> to start the simulation...")
 
     sim.run()
+
+    if args.learn:
+        graph = GraphLoader(timestamp)
+        if not graph is None:
+            input("Show graph?")
+            graph.show_graphs()
 
 
 if __name__ == '__main__':
