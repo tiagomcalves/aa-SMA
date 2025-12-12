@@ -1,5 +1,5 @@
 {"char": "#", "name": "Wall", "cost": 100.0, "collideable": true, "kill_zone": false, "active": false, "draw": true}
-{"char": "O", "name": "Objective", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
+{"char": "O", "name": "Objective", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true, "reward": 100.0}
 {"char": "F", "name": "Food", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
 {"char": "N", "name": "Nest", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": true}
 {"char": "S", "name": "Spawn", "cost": 0.0, "collideable": false, "kill_zone": false, "active": true, "draw": false}

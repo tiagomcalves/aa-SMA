@@ -45,6 +45,7 @@ class Phineas(Navigator2D):
         self.current_episode = 0
         self.episode_reward = 0.0
         self.episode_steps = 0
+        self.episode_steps_list = []
         self.episode_rewards = []
         self.episode_successes = []
         self.total_food_collected = 0
@@ -114,7 +115,7 @@ class Phineas(Navigator2D):
 
         #Guarda no histórico
         self.episode_rewards.append(self.episode_reward)
-        self.episode_steps_list = self.episode_steps
+        self.episode_steps_list.append(self.episode_steps)
         self.episode_successes.append(1 if success else 0)
 
         #Atualiza epsilon (apenas em modo LEARNING) - desvio dos dadoss egundo o tiago alves
@@ -493,6 +494,7 @@ class Phineas(Navigator2D):
                 'q_table': self.q_table,
                 'visit_counts': self.visit_counts,
                 'total_rewards': self.episode_rewards,
+                'total_steps': self.episode_steps_list,
                 'epsilon': self.epsilon,
                 'current_episode': self.current_episode,
                 'problem_type': self.problem  # Ajuda a validar se o save é compatível
