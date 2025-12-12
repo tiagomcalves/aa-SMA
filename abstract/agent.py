@@ -13,6 +13,7 @@ from component.sensor.sensor import Sensor
 class AgentStatus(Enum):
     INITIALIZING = auto()
     RUNNING = auto()
+    IDLE = auto()
     TERMINATED = auto()
 
 class Agent(ABC):
@@ -23,6 +24,7 @@ class Agent(ABC):
     @abstractmethod
     def __init__(self, problem: str, name: str, properties: dict):
         self.name = name
+        self.timestamp = properties["timestamp"]
         self.score = float(0.0)
         self.properties = properties
         self.status = AgentStatus.INITIALIZING
