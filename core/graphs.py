@@ -22,9 +22,9 @@ class GraphLoader:
         return obj
 
     def __init__(self, timestamp):
-        print("Number of episodes to graph:", self.num_episodes)
+        log().print("Generating graphs of the",self.num_episodes, "episodes:")
 
-        self.agent_line : dict[str, list] = {}
+        self.agent_line : dict[str, dict[str,list]] = {}
 
         for path in self.knowledgefiles:
 
@@ -34,22 +34,46 @@ class GraphLoader:
             try:
                 with open(path, "rb") as f:
                     data = pickle.load(f)
-                    self.agent_line[agent_name] = data.get('total_rewards')
+                    #print(agent_name, "data", data)
+                    self.agent_line[agent_name] = {}
+                    self.agent_line[agent_name]["rewards"] = data.get('total_rewards')
+                    self.agent_line[agent_name]["steps"] = data.get('total_steps')
 
             except FileNotFoundError:
                 print(f"{path}: file not found")
             except Exception as e:
                 print(f"{path}: error - {e}")
 
-        pprint(self.agent_line)
+
 
     def show_graphs(self):
-        season_range = range(self.num_episodes)
-        for agent, rewards in self.agent_line.items():
-            plt.plot(season_range, rewards, label=agent)
-        plt.legend()
-        plt.show()
+        season_range = range(self.num_episodes + 1)
 
+        fig, ax = plt.subplots(2, 1)
+
+        ax[0].set_title("Rewards")
+        ax[1].set_title("Steps")
+        ax[0].set_xlabel("Episode")
+        ax[1].set_xlabel("Episode")
+        ax[0].set_ylabel("Rewards earned")
+        ax[1].set_ylabel("Steps Taken")
+
+        for agent, data in self.agent_line.items():
+            #print("preparing graphs lines of agent", agent)
+            rewards_journey = [0.0]
+            rewards_journey.extend(data["rewards"])
+
+            steps_journey = [0.0]
+            steps_journey.extend(data["steps"])
+
+            ax[0].plot(season_range, rewards_journey, label=agent)
+            ax[1].plot(season_range, steps_journey, label=agent)
+
+        ax[0].legend()
+        ax[1].legend()
+
+        plt.tight_layout()
+        plt.show()
 
     @staticmethod
     def confirm_consistent_episode_entries(kbfiles: list[str]):
@@ -59,7 +83,7 @@ class GraphLoader:
                 with open(path, "rb") as f:
                     data = pickle.load(f)
                     episodes = data.get('current_episode')
-                    print(path, episodes)
+                    #print(path, episodes)
 
                 if num_lines_total == INVALID_EPISODE_COUNT:
                     num_lines_total = episodes

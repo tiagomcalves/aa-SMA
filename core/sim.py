@@ -64,7 +64,7 @@ class Simulator:
             is_ferb = "Ferb" in a_key or "ferb" in a_data.get("class", "")
             a_data["timestamp"] = timestamp
             if not args.test:
-                if "Phineas" in a_key or "phineas" in a_key.lower():
+                if "phineas" in a_key.lower():
                     a_data["class"] = "agent.phineas.Phineas"
                     a_data["mode"] = "LEARNING"
                     if "epsilon" not in a_data: a_data["epsilon"] = 0.1
