@@ -158,7 +158,7 @@ class Phineas(Navigator2D):
             log().print(f"Comida entregue: {self.total_food_delivered}")
 
         if self.mode == "LEARNING":
-            log().print(f"🎲 ε atual: {self.epsilon:.3f}")
+            log().print(f"ε atual: {self.epsilon:.3f}")
 
         # Guarda conhecimento
         self.save_knowledge()
@@ -378,7 +378,7 @@ class Phineas(Navigator2D):
         for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
             q = self.q_table.get((current_state, str(move)), 0.0)
             max_next_q = max(max_next_q, q)
-        #atualização Q-learning
+        #atualização Q-learning - Fórmula Bellman
         new_q = old_q + self.learning_rate * (
                 total_reward + self.discount_factor * max_next_q - old_q
         )
