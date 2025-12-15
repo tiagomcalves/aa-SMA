@@ -1,5 +1,6 @@
 import os
 import pickle
+from math import floor
 from pprint import pprint
 
 import matplotlib.pyplot as plt
@@ -48,30 +49,36 @@ class GraphLoader:
 
 
     def show_graphs(self):
+
+        fig, axes = plt.subplots(2, 1, figsize=(12, 7))
+
+        dataset_keys = ["rewards", "steps"]
         season_range = range(self.num_episodes + 1)
 
-        fig, ax = plt.subplots(2, 1)
+        # setting titles and labels to each plot
+        titles = ["Rewards earned", "Steps Taken"]
+        #x_labels = [""]
+        y_labels = ["Rewards", "Steps"]
 
-        ax[0].set_title("Rewards")
-        ax[1].set_title("Steps")
-        ax[0].set_xlabel("Episode")
-        ax[1].set_xlabel("Episode")
-        ax[0].set_ylabel("Rewards earned")
-        ax[1].set_ylabel("Steps Taken")
+        for ax, dataset, title, ylabel in zip(axes, dataset_keys, titles, y_labels):
+            ax.set_title(title)
+            ax.set_xlabel("Episode")
+            ax.set_ylabel(ylabel)
+            ax.grid(True)
 
-        for agent, data in self.agent_line.items():
-            #print("preparing graphs lines of agent", agent)
-            rewards_journey = [0.0]
-            rewards_journey.extend(data["rewards"])
+            for agent in self.agent_line:
+                journey_from_zero = [0.0]
+                journey_from_zero.extend(self.agent_line[agent][dataset])
+                ax.plot(season_range, journey_from_zero, label=agent, marker='o')
 
-            steps_journey = [0.0]
-            steps_journey.extend(data["steps"])
+                for xi, yi in zip(season_range, journey_from_zero):
+                    ax.annotate(f"{round(yi):d}", # floating-point decimal removal
+                                (xi, yi),
+                                textcoords="offset points",
+                                xytext=(0, 5),
+                                ha='center')
 
-            ax[0].plot(season_range, rewards_journey, label=agent)
-            ax[1].plot(season_range, steps_journey, label=agent)
-
-        ax[0].legend()
-        ax[1].legend()
+            ax.legend()
 
         plt.tight_layout()
         plt.show()
