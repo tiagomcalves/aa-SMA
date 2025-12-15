@@ -17,11 +17,10 @@ from map.position import Position
 class Phineas(Navigator2D):
     def __init__(self, problem: str, name: str, properties: dict):
         super().__init__(problem, name, properties)
-
-        # Identificação e posição
-        self.problem = problem
-        self._position = Position(*properties.get("starting_position", (0, 0)))
         self.char = properties.get("char", "P")
+
+        self._KB_FILE = f"logs/{problem}/kb/kb_{self.name}_{self.timestamp}.pkl"
+        os.makedirs(f"logs/{problem}/kb/", exist_ok=True)
 
         # Parametros reinforcement learning
         self.learning_rate = properties.get("learning_rate", 0.1)
@@ -37,7 +36,7 @@ class Phineas(Navigator2D):
                 "epsilon": self.epsilon,
                 "problem": problem
             }
-            self.learning_logger = log().create_learning_logger(name, agent_config)
+            self.learning_logger = log().create_learning_logger(name, self.timestamp, agent_config)
         else:
             self.epsilon = 0.0
             self.learning_logger = None
@@ -536,16 +535,15 @@ class Phineas(Navigator2D):
                 data['estimated_objective'] = (self.estimated_objective_position.x, self.estimated_objective_position.y)
 
             # Escrita no disco
-            with open(f"kb_{self.name}_{self.timestamp}.pkl", "wb") as f:
+            with open(self._KB_FILE, "wb") as f:
                 pickle.dump(data, f)
         except Exception:
             pass
 
     def load_knowledge(self):
-        filename = f"kb_{self.name}_{self.timestamp}.pkl"
-        if os.path.exists(filename):
+        if os.path.exists(self._KB_FILE):
             try:
-                with open(filename, "rb") as f:
+                with open(self._KB_FILE, "rb") as f:
                     data = pickle.load(f)
 
                 # Validação simples (opcional): Verifica se o save é do mesmo problema

@@ -30,7 +30,9 @@ class Navigator2D(Agent):
     @abstractmethod
     def __init__(self, problem: str, name: str, properties: dict):
         super().__init__(problem, name, properties)
-        self._char = properties["char"]
+        self.problem = problem
+        self.char = properties.get("char", "A")
+        self._position = Position(*properties.get("starting_position", (0, 0)))
 
         self.base_attributes = BaseAttributes()
 

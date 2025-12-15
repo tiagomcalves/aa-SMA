@@ -1,7 +1,6 @@
 import os
 import pickle
-from math import floor
-from pprint import pprint
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 from core.logger import log
@@ -10,26 +9,34 @@ INVALID_EPISODE_COUNT = -1
 
 class GraphLoader:
 
-    def __new__(cls, timestamp):
+    def __new__(cls, timestamp, problem):
         obj = super().__new__(cls)
-        obj.knowledgefiles = [f for f in os.listdir('.') if os.path.isfile(f) and f"{timestamp}" in f]
+        obj.KB_DIR = f"logs/{problem}/kb/"
+
+        obj.knowledgefiles = [
+            f for f in os.listdir(obj.KB_DIR)
+            if os.path.isfile(os.path.join(obj.KB_DIR, f))
+               and f"{timestamp}" in f
+        ]
+        print(obj.knowledgefiles)
+
         if len(obj.knowledgefiles) == 0:
             log().print(f"Graph: No knowledge files were found with timestamp {timestamp}")
             return None
 
-        obj.num_episodes = cls.confirm_consistent_episode_entries(obj.knowledgefiles)
+        obj.num_episodes = cls.confirm_consistent_episode_entries(obj.knowledgefiles, obj.KB_DIR)
         if obj.num_episodes == INVALID_EPISODE_COUNT:
             log().print("Graph: Episode lines between agents are not consistent, cannot generate graphs")
             return None
         return obj
 
-    def __init__(self, timestamp):
+    def __init__(self, timestamp, problem):
         log().print("Generating graphs of session", timestamp, "with",self.num_episodes, "episodes:")
 
         self.agent_line : dict[str, dict[str,list]] = {}
 
         for path in self.knowledgefiles:
-
+            path = self.KB_DIR + path
             splits = path.split("_")
             agent_name = "_".join(splits[1:-1])
 
@@ -84,11 +91,12 @@ class GraphLoader:
         plt.show()
 
     @staticmethod
-    def confirm_consistent_episode_entries(kbfiles: list[str]):
+    def confirm_consistent_episode_entries(kbfiles: list[str], dir):
         num_lines_total = INVALID_EPISODE_COUNT
         for path in kbfiles:
+            full_path = os.path.join(dir, path)
             try:
-                with open(path, "rb") as f:
+                with open(full_path, "rb") as f:
                     data = pickle.load(f)
                     episodes = data.get('current_episode')
                     #print(path, episodes)
@@ -101,9 +109,9 @@ class GraphLoader:
                     return INVALID_EPISODE_COUNT
 
             except FileNotFoundError:
-                print(f"{path}: file not found")
+                print(f"{full_path}: file not found")
             except Exception as e:
-                print(f"{path}: error - {e}")
+                print(f"{full_path}: error - {e}")
 
         return num_lines_total
 

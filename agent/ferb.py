@@ -13,10 +13,7 @@ from map.position import Position
 class Ferb(Navigator2D):
     def __init__(self, problem: str, name: str, properties: dict):
         super().__init__(problem, name, properties)
-
-        self.problem = problem
-        self._position = Position(*properties.get("starting_position", (0, 0)))
-        self.char = properties.get("char", "F")
+        #self.char = properties.get("char", "F")
         self.policy = POLICY_REGISTRY[problem]
 
         # Sistema de direção aleatória
