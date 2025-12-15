@@ -53,7 +53,7 @@ class Phineas(Navigator2D):
         self.successful_returns = 0
 
         #estado interno para o problema foraging e q_table
-        self.carrying = False
+        #self.carrying = False
         self.q_table = {}
         self.visit_counts = {}
 
@@ -65,33 +65,37 @@ class Phineas(Navigator2D):
         self.estimated_objective_position: Optional[Position] = None
 
         # Sistema anti-loop para nao ficar preso (panic mode e stuck)
-        self.pos_history = deque(maxlen=12)
-        self.panic_mode = 0
-        self.stuck_counter = 0
+        #self.pos_history = deque(maxlen=12)
+        #self.panic_mode = 0
+        #self.stuck_counter = 0
 
         self.last_state = None
         self.last_action = None
-        self.last_attempted_action = None
+        #self.last_attempted_action = None
         self.last_extrinsic_reward = 0.0
 
         # Ja terminou episodio?
-        self.episode_ended = False
+        #self.episode_ended = False
 
         self.load_knowledge()
+
 
     # ---------------------------------------------------
     # GESTÃO DE EPISÓDIOS
     # ---------------------------------------------------
     def start_episode(self):
         """Inicia um novo episódio"""
+        super().start_episode()
+
         self.current_episode += 1
         self.episode_reward = 0.0
         self.episode_steps = 0
         self.last_extrinsic_reward = 0.0
-        self.carrying = False
-        self.panic_mode = 0
-        self.pos_history.clear()
-        self.episode_ended = False  #reset flag término
+
+        #self.carrying = False
+        #self.panic_mode = 0
+        #self.pos_history.clear()
+        #self.episode_ended = False  #reset flag término
 
         # Reset posição estimada do objetivo (só para lighthouse)
         if self.problem == "lighthouse":
@@ -107,10 +111,10 @@ class Phineas(Navigator2D):
 
     def end_episode(self, success: bool = False):
         # Verifica se já terminou (evita chamadas duplicadas)
-        if self.episode_ended:
+        if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return
 
-        self.episode_ended = True
+        self.base_attributes.episode_ended = True
         self.episode_success = success
 
         #Guarda no histórico
@@ -168,7 +172,7 @@ class Phineas(Navigator2D):
     # ---------------------------------------------------
     def use_sensor(self) -> Observation:
         obs = self._sensor.get_info(self)
-        self.state.update_sensor_data(True, obs)
+        #self.state.update_sensor_data(True, obs)
 
         if obs.surroundings:
             self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
@@ -221,54 +225,56 @@ class Phineas(Navigator2D):
     def observation(self, obs: Observation):
         """Processa observações do ambiente"""
 
-        if self.episode_ended:
+        if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return
 
         if obs.type == ObservationType.ACCEPTED:
             reward = obs.payload.reward
             self.register_reward(reward)
 
-            if self.last_attempted_action:
-                if self.last_attempted_action.name == "move":
-                    direction = self.last_attempted_action.params.get("direction")
+            _last_attempted_action = self.base_attributes.last_attempted_action
+
+            if _last_attempted_action:
+                if _last_attempted_action.name == "move":
+                    direction = _last_attempted_action.params.get("direction")
                     if direction:
                         self._position = self._position + direction
                         self.my_estimated_position = self._position
-                        self.pos_history.append(self._position)
+                        self.base_attributes.pos_history.append(self._position)
 
                         # resetstuck counter se se moveu
-                        self.stuck_counter = 0
+                        self.base_attributes.stuck_counter = 0
 
                     #det automática de pickup/drop (para foraging)
                     if self.problem == "foraging" and reward >= 40.0:
-                        if not self.carrying:
-                            self.carrying = True
+                        if not self.base_attributes.carrying:
+                            self.base_attributes.carrying = True
                             self.total_food_collected += 1
                             log().vprint(f"{self.name}: Apanhou comida!")
                         else:
-                            self.carrying = False
+                            self.base_attributes.carrying = False
                             self.total_food_delivered += 1
                             self.successful_returns += 1
                             log().vprint(f"{self.name}: Entregou comida no ninho!")
 
-                elif self.last_attempted_action.name == "pick":
+                elif _last_attempted_action.name == "pick":
                     if self.problem == "foraging":
-                        self.carrying = True
+                        self.base_attributes.carrying = True
                         self.total_food_collected += 1
                     elif self.problem == "lighthouse":
                         # No lighthouse, pick é o objetivo - NÃO chama end_episode aqui
                         # O ambiente enviará Observation.TERMINATE
                         log().vprint(f"{self.name}: Chegou ao objetivo")
 
-                elif self.last_attempted_action.name == "drop":
+                elif _last_attempted_action.name == "drop":
                     if self.problem == "foraging":
-                        self.carrying = False
+                        self.base_attributes.carrying = False
                         self.total_food_delivered += 1
                         self.successful_returns += 1
                         log().vprint(f"{self.name}: Depositou no ninho!")
 
         elif obs.type == ObservationType.DENIED:
-            self.stuck_counter += 1
+            self.base_attributes.stuck_counter += 1
             self.register_reward(-0.1)
 
         elif obs.type == ObservationType.TERMINATE:
@@ -294,9 +300,9 @@ class Phineas(Navigator2D):
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
     # ---------------------------------------------------
     def _is_oscillating(self) -> bool:
-        if len(self.pos_history) < 6:
+        if len(self.base_attributes.pos_history) < 6:
             return False
-        unique_pos = set(list(self.pos_history)[-6:])
+        unique_pos = set(list(self.base_attributes.pos_history)[-6:])
         return len(unique_pos) <= 2
 
     def _get_valid_moves(self) -> list[Direction]: #movimentos validos
@@ -330,6 +336,7 @@ class Phineas(Navigator2D):
 
         return best_move if best_move else random.choice(valid_moves)
 
+
     def _choose_q_learning_move(self, valid_moves: list) -> Direction: #choose com q-learning
         state = self._get_state_key()
         self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
@@ -342,6 +349,8 @@ class Phineas(Navigator2D):
                 return self._choose_best_q_action(state, valid_moves)
             else:
                 return random.choice(valid_moves)
+
+
     def _choose_best_q_action(self, state: str, valid_moves: list) -> Direction: #escolher acao com melhor q
         best_q = float('-inf')
         best_actions = []
@@ -353,9 +362,11 @@ class Phineas(Navigator2D):
             elif q == best_q:
                 best_actions.append(move)
         return random.choice(best_actions) if best_actions else random.choice(valid_moves)
+
+
     def _get_state_key(self) -> str: #chave de estado para o q-learning
         if self.problem == "foraging":
-            return f"C:{1 if self.carrying else 0}|Pos:{self._position.x},{self._position.y}"
+            return f"C:{1 if self.base_attributes.carrying else 0}|Pos:{self._position.x},{self._position.y}"
         elif self.problem == "lighthouse":
             # Inclui direção do farol no estado
             obs_dir = self.curr_observations.get(ObservationType.DIRECTION)
@@ -366,6 +377,8 @@ class Phineas(Navigator2D):
                 return f"Dir:None|Pos:{self._position.x},{self._position.y}"
         else:
             return f"Pos:{self._position.x},{self._position.y}"
+
+
     def _learn(self, current_state: str):#atualizar q-table
         if not self.last_state or not self.last_action:
             return
@@ -388,7 +401,7 @@ class Phineas(Navigator2D):
     # ACT
     # ---------------------------------------------------
     def act(self) -> Action:
-        if self.episode_ended: #se episodio acabou - n se mexe mais
+        if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return self.action.wait()
         #Atualiza sensores
         self._update_sensor()
@@ -397,40 +410,44 @@ class Phineas(Navigator2D):
         obs_loc = self.curr_observations.get(ObservationType.LOCATION)
         if obs_loc:
             tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
+
+            _carrying = self.base_attributes.carrying
+            _last_attempted_action = self.base_attributes.last_attempted_action
+
             if self.problem == "foraging":
-                if not self.carrying and tile in ["FOOD", "RESOURCE"]:
+                if not _carrying and tile in ["FOOD", "RESOURCE"]:
                     act = self.action.pick()
-                    self.last_attempted_action = act
+                    _last_attempted_action = act
                     return act
-                if self.carrying and tile == "NEST":
+                if _carrying and tile == "NEST":
                     act = self.action.drop()
-                    self.last_attempted_action = act
+                    _last_attempted_action = act
                     return act
             elif self.problem == "lighthouse" and tile in ["OBJECTIVE", "O", "@"]:
                 log().print(f"agent {self.name} trying to pick OBJECTIVE")
                 act = self.action.pick()
-                self.last_attempted_action = act
+                _last_attempted_action = act
                 return act
         #Obtém movimentos válidos
         valid_moves = self._get_valid_moves()
         if not valid_moves:
             act = self.action.wait()
-            self.last_attempted_action = act
+            _last_attempted_action = act
             return act
         final_dir = None
 
         #MODO PÂNICO (anti-loop)
-        if self._is_oscillating() or self.stuck_counter > 3:
-            self.panic_mode = 3
-            self.stuck_counter = 0
+        if self._is_oscillating() or self.base_attributes.stuck_counter > 3:
+            self.base_attributes.panic_mode = 3
+            self.base_attributes.stuck_counter = 0
 
-        if self.panic_mode > 0:
-            self.panic_mode -= 1
+        if self.base_attributes.panic_mode > 0:
+            self.base_attributes.panic_mode -= 1
             final_dir = random.choice(valid_moves)
 
         #LÓGICA ESPECÍFICA POR PROBLEMA
         elif self.problem == "foraging":
-            if self.carrying:
+            if self.base_attributes.carrying:
                 # Volta ao ninho
                 final_dir = self._navigate_towards_target(self.known_nest_position, valid_moves)
             else: #procurar comida com q-learning
@@ -481,13 +498,14 @@ class Phineas(Navigator2D):
 
         # Cria ação
         act = self.action.move(final_dir)
-        self.last_attempted_action = act
+        self.base_attributes.last_attempted_action = act
         return act
 
     # ---------------------------------------------------
     # PERSISTÊNCIA
     # ---------------------------------------------------
     def save_knowledge(self):
+        print("saving knowledge")
         try:
             # 1. Dados Base (Comuns a todos os problemas)
             data = {

@@ -31,7 +31,7 @@ class Agent(ABC):
         self._sensor : Optional[Sensor] = None
         self.curr_observations: dict[ObservationType, Observation] = {}
         self.curr_action : Optional[Action] = None
-        self.state = State(problem, name)
+        #self.state = State(problem, name)
         self.action = ActionBuilder(self)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -84,4 +84,8 @@ class Agent(ABC):
         pass
 
     def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
+        pass
+
+    @abstractmethod
+    def start_episode(self) -> None:
         pass

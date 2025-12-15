@@ -9,6 +9,8 @@ import os
 
 from abstract import Agent
 from abstract.agent import AgentStatus
+from abstract.utils.action_builder import ActionBuilder
+from component.observation import Observation
 from core.logger import log
 from core.loader import ConfigLoader
 from core.scheduler import Scheduler
@@ -29,7 +31,7 @@ class Simulator:
 
     def __init__(self, env: Environment, agents: list[Agent], args: Namespace, timestamp: float):
         self.args = args
-        self._name = args.problem
+        self._problem = args.problem
         self._STEP_SECONDS = args.step / 1000 if not self.args.test else 0
         self._active_agents = 0
 
@@ -38,7 +40,7 @@ class Simulator:
 
         # Define max steps
         self.max_steps = 1000
-        self._scheduler = Scheduler(self.max_steps, args.learn if args.learn is not None else 1)
+        self._scheduler = Scheduler(self.max_steps, args.episodes)
 
         self._env = env
         self._agents = agents
@@ -46,7 +48,7 @@ class Simulator:
         self._boot_output()
 
     def _create_log_directory(self):
-        log_dir = f"logs/{self._name}"
+        log_dir = f"logs/{self._problem}"
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(f"{log_dir}/learning", exist_ok=True)
         os.makedirs(f"{log_dir}/test", exist_ok=True)   # remove
@@ -62,7 +64,9 @@ class Simulator:
 
         for a_key, a_data in agents_json_data.items():
             is_ferb = "Ferb" in a_key or "ferb" in a_data.get("class", "")
+
             a_data["timestamp"] = timestamp
+
             if not args.test:
                 if "phineas" in a_key.lower():
                     a_data["class"] = "agent.phineas.Phineas"
@@ -100,6 +104,10 @@ class Simulator:
     def think(self) -> None:
         self._scheduler.step()
 
+    def tell_agents_to_terminate(self):
+        for a in self._agents:
+            self._env.send_observation(a, Observation.terminate(ActionBuilder(a).wait(), 0.0))
+
     def terminate_agent(self, agent) -> bool:
         if agent in self.list_agents():
 
@@ -116,13 +124,12 @@ class Simulator:
 
         while not self._scheduler.out_of_episode():
 
-            if self.args.learn:
-                log().print(f"Episódio {self._scheduler.curr_episode() + 1}")
+            log().print(f"Episódio {self._scheduler.curr_episode() + 1}")
 
             sensor = Sensor(self._env)
 
             for a in self._agents:
-                if hasattr(a, "start_episode"): a.start_episode()
+                a.start_episode()
                 a.status = AgentStatus.RUNNING
                 self._active_agents += 1
                 # (re)install sensor at the beginning of each episode
@@ -166,16 +173,17 @@ class Simulator:
             if not self._scheduler.out_of_episode():
                 self._env = self.initial_state.env.clone()
 
+        self.tell_agents_to_terminate()
         log().print(f"SIMULAÇÃO CONCLUÍDA")
 
 
     def _boot_output(self) -> None:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
         log().print(f"""------------------------------------------------
-Simulation: \"{self._name}\"
+Simulation: \"{self._problem}\"
 Mode: {"TRAINING" if not self.args.test else "TESTING"}
 Max Steps: {self.max_steps}
-Logs: logs/{self._name}/
+Logs: logs/{self._problem}/
 Agents: {len(self._agents)} loaded
 {_agents_list}------------------------------------------------""")
         if self.args.renderer: self._env.render()

@@ -13,6 +13,7 @@ class GraphLoader:
         obj = super().__new__(cls)
         obj.knowledgefiles = [f for f in os.listdir('.') if os.path.isfile(f) and f"{timestamp}" in f]
         if len(obj.knowledgefiles) == 0:
+            log().print(f"Graph: No knowledge files were found with timestamp {timestamp}")
             return None
 
         obj.num_episodes = cls.confirm_consistent_episode_entries(obj.knowledgefiles)
@@ -22,7 +23,7 @@ class GraphLoader:
         return obj
 
     def __init__(self, timestamp):
-        log().print("Generating graphs of the",self.num_episodes, "episodes:")
+        log().print("Generating graphs of session", timestamp, "with",self.num_episodes, "episodes:")
 
         self.agent_line : dict[str, dict[str,list]] = {}
 
@@ -34,7 +35,7 @@ class GraphLoader:
             try:
                 with open(path, "rb") as f:
                     data = pickle.load(f)
-                    #print(agent_name, "data", data)
+                    print(agent_name, "data", data)
                     self.agent_line[agent_name] = {}
                     self.agent_line[agent_name]["rewards"] = data.get('total_rewards')
                     self.agent_line[agent_name]["steps"] = data.get('total_steps')
