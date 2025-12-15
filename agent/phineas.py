@@ -6,6 +6,7 @@ from collections import deque
 
 from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D
+from abstract.utils.policy import _get_valid_moves, _is_oscillating
 from component.action import Action
 from component.direction import Direction
 from component.observation import Observation, ObservationType
@@ -299,12 +300,14 @@ class Phineas(Navigator2D):
     # ---------------------------------------------------
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
     # ---------------------------------------------------
+    """
     def _is_oscillating(self) -> bool:
         if len(self.base_attributes.pos_history) < 6:
             return False
         unique_pos = set(list(self.base_attributes.pos_history)[-6:])
         return len(unique_pos) <= 2
-
+    """
+    """
     def _get_valid_moves(self) -> list[Direction]: #movimentos validos
         obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
         valid_moves = []
@@ -317,6 +320,7 @@ class Phineas(Navigator2D):
         else:
             valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
         return valid_moves
+    """
 
     def _navigate_towards_target(self, target: Optional[Position], valid_moves: list) -> Direction:
         #andar para alvo
@@ -429,7 +433,7 @@ class Phineas(Navigator2D):
                 _last_attempted_action = act
                 return act
         #Obtém movimentos válidos
-        valid_moves = self._get_valid_moves()
+        valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
         if not valid_moves:
             act = self.action.wait()
             _last_attempted_action = act
@@ -437,7 +441,7 @@ class Phineas(Navigator2D):
         final_dir = None
 
         #MODO PÂNICO (anti-loop)
-        if self._is_oscillating() or self.base_attributes.stuck_counter > 3:
+        if _is_oscillating(self.base_attributes.pos_history) or self.base_attributes.stuck_counter > 3:
             self.base_attributes.panic_mode = 3
             self.base_attributes.stuck_counter = 0
 
