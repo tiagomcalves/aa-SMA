@@ -13,7 +13,8 @@ class Action:
 
     def __post_init__(self):
         #print(f"created action {self.name} by {self.agent} with params {self.params}")
-        self.agent.state.update_action_taken(self)
+        #self.agent.state.update_action_taken(self)
+        pass
 
 class ActionResponse(Enum):
     def _generate_next_value_(name, start, count, last_values):
