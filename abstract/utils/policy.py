@@ -15,62 +15,6 @@ class Policy(ABC):
         pass
 
 
-def _get_valid_moves(surroundings: Observation) -> list:
-    """Obtém movimentos válidos (não paredes)"""
-    valid_moves = []
-
-    if surroundings:
-        bad_tiles = ["WALL"]
-        cells = surroundings.payload.cells
-
-        for direction, content in cells.items():
-            if direction == Direction.NONE:
-                continue
-
-            content_clean = str(content).strip()
-            is_wall = content_clean in bad_tiles or content_clean.upper() in bad_tiles
-
-            if not is_wall:
-                valid_moves.append(direction)
-    else:
-        valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-
-    return valid_moves
-
-
-def _is_stuck(stuck_counter, pos_history) -> bool: #ta preso ou em loop
-    if stuck_counter >= 3:
-        return True
-
-    if len(pos_history) >= 6:
-        # Verifica se está repetindo as últimas posições
-        recent = pos_history[-6:]
-        if len(set(recent)) <= 2:
-            return True
-
-    return False
-
-
-def _choose_random_direction(valid_moves: list, last_attempt_action, avoid_recent: bool = True) -> Direction:
-    #random diretion
-    if not valid_moves:
-        return None
-
-    # Se temos histórico de ações recentes, evita voltar para trás imediatamente
-    if avoid_recent and last_attempt_action and len(valid_moves) > 1:
-        if last_attempt_action.name == "move":
-            last_dir = last_attempt_action.params.get("direction")
-            if last_dir:
-                opposite = last_dir.opposite() if hasattr(last_dir, 'opposite') else None
-                # Remove direção oposta das opções (evita ir e voltar)
-                filtered = [d for d in valid_moves if d != opposite]
-                if filtered:
-                    return random.choice(filtered)
-
-    # Escolha totalmente aleatória
-    return random.choice(valid_moves)
-
-
 class LighthousePolicy(Policy):
     def act(self, name, curr_observations: dict[ObservationType, Observation], attr: BaseAttributes, action:ActionBuilder):
         obs_loc = curr_observations.get(ObservationType.LOCATION)
@@ -212,16 +156,105 @@ class MazePolicy(Policy):
         pass
 
 
+
+#    registering problem string to policy class
+
 POLICY_REGISTRY = {
     "lighthouse": LighthousePolicy(),
     "foraging": ForagingPolicy(),
     "maze": MazePolicy()
 }
 
+
+
 """
-    Auxiliary static functions
+    Auxiliary functions
 """
 
+# general movement checks
+
+def _get_valid_moves(surroundings: Observation) -> list:
+    """Obtém movimentos válidos (não paredes)"""
+    valid_moves = []
+
+    if surroundings:
+        bad_tiles = ["WALL"]
+        cells = surroundings.payload.cells
+
+        for direction, content in cells.items():
+            if direction == Direction.NONE:
+                continue
+
+            #if d != Direction.NONE and str(c).upper().strip() not in bad_tiles:
+            content_clean = str(content).strip()
+            is_wall = content_clean in bad_tiles or content_clean.upper() in bad_tiles
+
+            if not is_wall:
+                valid_moves.append(direction)
+    else:
+        valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+
+    return valid_moves
+
+
+def _is_stuck(stuck_counter, pos_history) -> bool: #ta preso ou em loop
+    if stuck_counter >= 3:
+        return True
+
+    if len(pos_history) >= 6:
+        # Verifica se está repetindo as últimas posições
+        recent = pos_history[-6:]
+        if len(set(recent)) <= 2:
+            return True
+
+    return False
+
+
+def _choose_random_direction(valid_moves: list, last_attempt_action, avoid_recent: bool = True) -> Direction:
+    #random diretion
+    if not valid_moves:
+        return None
+
+    # Se temos histórico de ações recentes, evita voltar para trás imediatamente
+    if avoid_recent and last_attempt_action and len(valid_moves) > 1:
+        if last_attempt_action.name == "move":
+            last_dir = last_attempt_action.params.get("direction")
+            if last_dir:
+                opposite = last_dir.opposite() if hasattr(last_dir, 'opposite') else None
+                # Remove direção oposta das opções (evita ir e voltar)
+                filtered = [d for d in valid_moves if d != opposite]
+                if filtered:
+                    return random.choice(filtered)
+
+    # Escolha totalmente aleatória
+    return random.choice(valid_moves)
+
+
+def _navigate_randomly_with_momentum(valid_moves: list, last_attempt_action, wander_tendency) -> Optional[Direction]:
+    # Caminha aleatoriamente com inercia
+    if not valid_moves:
+        return None
+
+    # Se o último movimento foi aceito e ainda é válido, tem chance de continuar
+    if (last_attempt_action and
+            last_attempt_action.name == "move" and
+            random.random() < wander_tendency):
+
+        last_dir = last_attempt_action.params.get("direction")
+        if last_dir and last_dir in valid_moves:
+            return last_dir
+
+    # Caso contrário, escolhe aleatoriamente
+    return _choose_random_direction(valid_moves, last_attempt_action)
+
+
+def _is_oscillating(pos_history) -> bool:
+    if len(pos_history) < 6:
+        return False
+    unique_pos = set(list(pos_history)[-6:])
+    return len(unique_pos) <= 2
+
+# foraging-specific auxiliary functions
 
 def _scan_for_food(surroundings, valid_moves: list) -> Optional[Direction]:  # verifica comida redondezas
     if surroundings:
@@ -246,21 +279,3 @@ def _scan_for_nest(surroundings, valid_moves: list) -> Optional[Direction]:
             if content_upper in ["NEST", "N"]:  # viu ninho
                 return direction
     return None
-
-
-def _navigate_randomly_with_momentum(valid_moves: list, last_attempt_action, wander_tendency) -> Optional[Direction]:
-    # Caminha aleatoriamente com inercia
-    if not valid_moves:
-        return None
-
-    # Se o último movimento foi aceito e ainda é válido, tem chance de continuar
-    if (last_attempt_action and
-            last_attempt_action.name == "move" and
-            random.random() < wander_tendency):
-
-        last_dir = last_attempt_action.params.get("direction")
-        if last_dir and last_dir in valid_moves:
-            return last_dir
-
-    # Caso contrário, escolhe aleatoriamente
-    return _choose_random_direction(valid_moves, last_attempt_action)
