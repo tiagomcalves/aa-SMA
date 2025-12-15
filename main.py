@@ -62,7 +62,7 @@ def main():
 
     sim.run()
 
-    graph = GraphLoader(timestamp)
+    graph = GraphLoader(timestamp, args.problem)
     if not graph is None:
         while True:
             answer = input("Show graph of simulation? (y/n): ").strip().lower()

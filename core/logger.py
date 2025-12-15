@@ -30,10 +30,10 @@ class Logger:
     # ---------------------------------------------------
     # APRENDIZAGEM
     # ---------------------------------------------------
-    def create_learning_logger(self, agent_name: str, config: Dict[str, Any] = None) -> 'LearningLogger':
+    def create_learning_logger(self, agent_name: str, timestamp, config: Dict[str, Any] = None) -> 'LearningLogger':
         """Cria um logger específico para aprendizagem do agente"""
         if agent_name not in self.learning_loggers:
-            self.learning_loggers[agent_name] = LearningLogger(agent_name, config or {}, self.problem_name)
+            self.learning_loggers[agent_name] = LearningLogger(agent_name, timestamp, config or {}, self.problem_name)
             self.vprint(f"📝 Created learning logger for agent: {agent_name}")
         return self.learning_loggers[agent_name]
 
@@ -89,13 +89,14 @@ class Logger:
 
 
 class LearningLogger:
-    def __init__(self, agent_name: str, config: Dict[str, Any], problem_name: str = "default"):
+    def __init__(self, agent_name: str, timestamp, config: Dict[str, Any], problem_name: str = "default"):
         self.agent_name = agent_name
         self.config = config
         self.problem_name = problem_name
 
         # Cria nome de ficheiro único com timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.timestamp = timestamp
 
         # Diretório específico do problema
         log_dir = f"logs/{problem_name}/learning"
@@ -195,9 +196,10 @@ class LearningLogger:
 
 
 class TestLogger:
-    def __init__(self, test_name: str, problem_name: str = "default"):
+    def __init__(self, test_name: str, timestamp, problem_name: str = "default"):
         self.test_name = test_name
         self.problem_name = problem_name
+        self.timestamp = timestamp
         self.results = []
 
         # Diretório específico do problema
@@ -224,7 +226,7 @@ class TestLogger:
         # Cria relatório completo
         report = {
             'test_name': self.test_name,
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': self.timestamp.now().isoformat(),
             'total_episodes': len(self.results),
             'episodes': self.results,
             'statistics': stats
