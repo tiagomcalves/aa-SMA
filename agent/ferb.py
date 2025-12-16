@@ -28,11 +28,12 @@ class Ferb(Navigator2D):
     # ---------------------------------------------------
     def observation(self, obs: Observation):
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
-            return self.action.wait()
+            return
 
         self._update_sensor(True)
 
         if obs.type == ObservationType.ACCEPTED:
+            self.register_reward(obs.payload.reward)
             # Deteção via Reward (Auto-Pickup)
             if obs.payload.reward >= 40.0:
                 if self.problem == "foraging":
@@ -55,11 +56,14 @@ class Ferb(Navigator2D):
                     self.base_attributes.stuck_counter = 0
 
         elif obs.type == ObservationType.DENIED:
+            self.register_reward(obs.payload.reward)
             self.base_attributes.stuck_counter += 1
 
         elif obs.type == ObservationType.TERMINATE:
+            self.register_reward(obs.payload.reward)
             self.status = AgentStatus.TERMINATED
-            self.base_attributes.episode_ended = True
+            success = True if obs.payload.reward > 0.0 else False
+            self.end_episode(success)
 
 
     def _update_sensor(self, post_action: bool):
