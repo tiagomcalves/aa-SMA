@@ -246,7 +246,7 @@ class Environment:
                     target_pos = best_n
             else:
                 foods = self._map.get_entity_by_name("Food")
-                if not foods: foods = self._map.get_entity_by_name("FOOD")
+                #if not foods: foods = self._map.get_entity_by_name("FOOD")
                 if foods:
                     min_dist = float('inf')
                     best_f = None
