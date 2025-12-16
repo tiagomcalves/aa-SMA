@@ -5,8 +5,6 @@ import json
 from datetime import datetime
 import os
 
-
-
 class Logger:
     def __init__(self, verbose=False, problem_name="default"):
         self.verbose = verbose
@@ -196,37 +194,65 @@ class LearningLogger:
         pass
 
 
-class TestLogger:
-    def __init__(self, test_name: str, timestamp, problem_name: str = "default"):
-        self.test_name = test_name
-        self.problem_name = problem_name
+class ReportLogger:
+    def __init__(self, timestamp, problem: str = "default"):
+        self.problem = problem
         self.timestamp = timestamp
         self.results = []
 
         # Diretório específico do problema
-        log_dir = f"logs/{problem_name}/test"
+        log_dir = f"logs/{problem}/report"
         os.makedirs(log_dir, exist_ok=True)
 
         # Ficheiros de output
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.json_file = f"{log_dir}/{test_name}_{timestamp}.json"
-        self.csv_file = f"{log_dir}/{test_name}_{timestamp}.csv"
+        self.json_file = f"{log_dir}/{problem}_{timestamp}.json"
+        self.csv_file = f"{log_dir}/{problem}_{timestamp}.csv"
 
-    def log_result(self, result_data: Dict[str, Any]):
-        """Regista um resultado de teste"""
-        self.results.append(result_data)
+        # Inicializa ficheiros
+        self._init_csv_file()
+
+    def _init_csv_file(self):
+        """Inicializa ficheiro CSV com cabeçalho"""
+        with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'name', 'rewards', 'successes', 'success_rate', 
+                'avg_total_reward', 'avg_steps', 'avg_discounted_reward',
+                'min_reward','max_reward',
+                'total_successful','total_failed', 
+                'food_collected', 'food_delivered'
+            ])
+
+
+    def retrieve_session_data(self, agent: 'Navigator2D', episodes):
+        
+        agent_session = {
+            'name': agent.name,
+            "episodes": episodes,
+            'rewards': agent.session.rewards,
+            'steps': agent.session.steps_per_ep,
+            'successes': agent.session.successes,
+
+            'food_collected': agent.ep.total_food_collected, 
+            'food_delivered': agent.ep.total_food_delivered
+        }
+
+        log().print(agent_session)
+        agent_session = {**agent_session, **self._calculate_statistics(agent_session)}
+        
+        self.results.append(agent_session)
 
     def save_report(self):
         """Salva relatório completo de teste"""
         if not self.results:
             return
-
+        """
         # Calcula estatísticas
-        stats = self._calculate_statistics()
+        stats = self._calculate_session_statistics()
 
         # Cria relatório completo
         report = {
-            'test_name': self.test_name,
             'timestamp': self.timestamp.now().isoformat(),
             'total_episodes': len(self.results),
             'episodes': self.results,
@@ -236,24 +262,23 @@ class TestLogger:
         # Salva JSON
         with open(self.json_file, 'w', encoding='utf-8') as f:
             json.dump(report, f, indent=2, default=str)
-
+        """
         # Salva CSV resumido
-        self._save_csv_summary(stats)
+        self._save_csv_summary()
 
-        return report
 
-    def _calculate_statistics(self) -> Dict[str, Any]:
+    def _calculate_statistics(self, agent_data: Dict[str, Any]) -> Dict[str, Any]:
         """Calcula estatísticas dos resultados"""
-        if not self.results:
+        if not agent_data:
             return {}
 
         # Extrai dados
-        successes = [r for r in self.results if r.get('success', False)]
-        rewards = [r.get('total_reward', 0) for r in self.results]
-        steps = [r.get('steps', 0) for r in self.results]
+        successes = agent_data.get('successes', False)
+        rewards = agent_data.get('rewards', 0)
+        steps = agent_data.get('steps', 0)
 
         # Calcula estatísticas
-        success_rate = len(successes) / len(self.results) if self.results else 0
+        success_rate = successes.count(1) / len(successes) if len(successes) else 0
 
         # Calcula média
         avg_reward = sum(rewards) / len(rewards) if rewards else 0
@@ -261,9 +286,10 @@ class TestLogger:
 
         # Calcula recompensa descontada (γ=0.9)
         discounted_rewards = []
-        for r in self.results:
-            reward = r.get('total_reward', 0)
-            steps_count = r.get('steps', 1)
+        print("rewards")
+        for ep in range(agent_data.get('episodes', 1)):
+            reward = agent_data.get('rewards', 0)[ep]
+            steps_count = agent_data.get('steps', 1)[ep]
             discounted = reward * (0.9 ** (steps_count - 1))  # γ^(t-1)
             discounted_rewards.append(discounted)
 
@@ -276,28 +302,32 @@ class TestLogger:
             'avg_discounted_reward': avg_discounted,
             'min_reward': min(rewards) if rewards else 0,
             'max_reward': max(rewards) if rewards else 0,
-            'total_successful': len(successes),
-            'total_failed': len(self.results) - len(successes)
+            'total_successful': successes.count(1),
+            'total_failed': successes.count(0)
         }
 
-    def _save_csv_summary(self, stats: Dict[str, Any]):
+    def _save_csv_summary(self):
         """Salva sumário em CSV"""
-        with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
+        with open(self.csv_file, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
-            # Cabeçalho
-            writer.writerow(['metric', 'value', 'description'])
+            for line in self.results:
+                writer.writerow([
+                    line.get('name', 'name'),
+                    line.get('rewards', []),
+                    line.get('successes', []),
+                    line.get('success_rate', '-1'),
+                    line.get('avg_total_reward', '-1'),
+                    line.get('avg_steps', '-1'),
+                    line.get('avg_discounted_reward', '-1'),
+                    line.get('min_reward', '-1'),
+                    line.get('max_reward', '-1'),
+                    line.get('total_successful', '-1'),
+                    line.get('total_failed', '-1'),
+                    line.get('food_collected', '-1'),
+                    line.get('food_delivered', '-1'),
+                ])
 
-            # Dados
-            writer.writerow(['test_name', self.test_name, 'Nome do teste'])
-            writer.writerow(['total_episodes', stats.get('total_episodes', 0), 'Total de episódios'])
-            writer.writerow(['success_rate', f"{stats.get('success_rate', 0) * 100:.1f}%", 'Taxa de sucesso'])
-            writer.writerow(['avg_total_reward', f"{stats.get('avg_total_reward', 0):.2f}", 'Recompensa média'])
-            writer.writerow(['avg_steps', f"{stats.get('avg_steps', 0):.1f}", 'Passos médios'])
-            writer.writerow(['avg_discounted_reward', f"{stats.get('avg_discounted_reward', 0):.2f}",
-                             'Recompensa descontada média'])
-            writer.writerow(['total_successful', stats.get('total_successful', 0), 'Episódios bem sucedidos'])
-            writer.writerow(['total_failed', stats.get('total_failed', 0), 'Episódios falhados'])
 
     def close(self):
         """Salva relatório ao fechar"""
