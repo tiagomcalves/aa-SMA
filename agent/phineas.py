@@ -1,15 +1,16 @@
 import random
 import pickle # para guardar biblioteca knowledge
 import os
+from dataclasses import replace
 from typing import Optional
 from collections import deque
 
 from abstract.agent import AgentStatus
-from abstract.nav2d import Navigator2D
+from abstract.nav2d import Navigator2D, CurrLearningEpisode, SessionData, BaseAttributes
 from abstract.utils.policy import _get_valid_moves, _is_oscillating
 from component.action import Action
 from component.direction import Direction
-from component.observation import Observation, ObservationType
+from component.observation import Observation, ObservationType, ObservationBundle
 from core.logger import log
 from map.position import Position
 
@@ -19,39 +20,39 @@ class Phineas(Navigator2D):
         super().__init__(problem, name, properties)
         self.char = properties.get("char", "P")
 
-        self._KB_FILE = f"logs/{problem}/kb/kb_{self.name}_{self.timestamp}.pkl"
-        os.makedirs(f"logs/{problem}/kb/", exist_ok=True)
-
-        # Parametros reinforcement learning
-        self.learning_rate = properties.get("learning_rate", 0.1)
-        self.discount_factor = properties.get("discount_factor", 0.9)
-        self.epsilon = properties.get("epsilon", 0.15)
         self.mode = properties.get("mode", "LEARNING").upper()
+        _KB_DIR = f"logs/{problem}/kb/"
+        os.makedirs(_KB_DIR, exist_ok=True)
 
-        # Logger para registo
         if self.mode == "LEARNING":
+
+            self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{self.timestamp}.pkl"
+
+            self.ep = CurrLearningEpisode()
+
+            self.ep.learning_rate = properties.get("learning_rate", 0.1)
+            self.ep.discount_factor = properties.get("discount_factor", 0.9)
+            self.ep.epsilon = properties.get("epsilon", 0.15)
+
             agent_config = {
-                "learning_rate": self.learning_rate,
-                "discount_factor": self.discount_factor,
-                "epsilon": self.epsilon,
+                "learning_rate": self.ep.learning_rate,
+                "discount_factor": self.ep.discount_factor,
+                "epsilon": self.ep.epsilon,
                 "problem": problem
             }
             self.learning_logger = log().create_learning_logger(name, self.timestamp, agent_config)
+            #self.learning_logger = log().create_learning_logger(name, self.timestamp, self.ep)
         else:
-            self.epsilon = 0.0
-            self.learning_logger = None
+            stored_kb_timestamp = "1765846972.8892236"
+            self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
 
-        #historico eps
-        self.current_episode = 0
-        self.episode_reward = 0.0
-        self.episode_steps = 0
-        self.episode_steps_list = []
-        self.episode_rewards = []
-        self.episode_successes = []
-        self.total_food_collected = 0
-        self.total_food_delivered = 0
-        self.successful_returns = 0
 
+        self.last_state = None
+        self.last_action = None
+
+        """
+            problem specific attributes
+        """
         #estado interno para o problema foraging e q_table
         #self.carrying = False
         self.q_table = {}
@@ -64,18 +65,7 @@ class Phineas(Navigator2D):
         # Para lighthouse - estimativa de posição do farol
         self.estimated_objective_position: Optional[Position] = None
 
-        # Sistema anti-loop para nao ficar preso (panic mode e stuck)
-        #self.pos_history = deque(maxlen=12)
-        #self.panic_mode = 0
-        #self.stuck_counter = 0
-
-        self.last_state = None
-        self.last_action = None
-        #self.last_attempted_action = None
-        self.last_extrinsic_reward = 0.0
-
-        # Ja terminou episodio?
-        #self.episode_ended = False
+        """ ------------------------------ """
 
         self.load_knowledge()
 
@@ -85,84 +75,68 @@ class Phineas(Navigator2D):
     # ---------------------------------------------------
     def start_episode(self):
         """Inicia um novo episódio"""
-        super().start_episode()
-
-        self.current_episode += 1
-        self.episode_reward = 0.0
-        self.episode_steps = 0
-        self.last_extrinsic_reward = 0.0
-
-        #self.carrying = False
-        #self.panic_mode = 0
-        #self.pos_history.clear()
-        #self.episode_ended = False  #reset flag término
+        if self.mode == "LEARNING":
+            self.base_attributes = BaseAttributes()
+            self.ep = replace(
+                CurrLearningEpisode(),
+                current=self.ep.current+1,
+                learning_rate=self.ep.learning_rate,
+                discount_factor=self.ep.discount_factor,
+                epsilon=self.ep.epsilon)
+        else:
+            super().start_episode()
 
         # Reset posição estimada do objetivo (só para lighthouse)
         if self.problem == "lighthouse":
             self.estimated_objective_position = None
 
-        log().vprint(f"{self.name}: Início Episódio {self.current_episode}")
+        log().vprint(f"{self.name}: Início Episódio {self.ep.current}")
 
-    def register_reward(self, reward: float):
-        #register reward
-        self.episode_reward += reward
-        self.episode_steps += 1
-        self.last_extrinsic_reward = reward
 
     def end_episode(self, success: bool = False):
-        # Verifica se já terminou (evita chamadas duplicadas)
-        if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
-            return
-
-        self.base_attributes.episode_ended = True
-        self.episode_success = success
-
-        #Guarda no histórico
-        self.episode_rewards.append(self.episode_reward)
-        self.episode_steps_list.append(self.episode_steps)
-        self.episode_successes.append(1 if success else 0)
+        super().end_episode(success)
 
         #Atualiza epsilon (apenas em modo LEARNING) - desvio dos dadoss egundo o tiago alves
         if self.mode == "LEARNING":
-            self.epsilon = max(0.01, self.epsilon * 0.995)
+            self.ep.epsilon = max(0.01, self.ep.epsilon * 0.995)
 
         # REGISTO NO LOGGER (apenas para Q-learning em modo LEARNING)
         if self.mode == "LEARNING" and self.learning_logger:
             episode_data = {
-                'episode': self.current_episode,
-                'total_reward': self.episode_reward,
-                'steps': self.episode_steps,
+                'episode': self.ep.current,
+                'total_reward': self.ep.reward,
+                'steps': self.ep.steps,
                 'success': success,
-                'epsilon': self.epsilon,
-                'learning_rate': self.learning_rate,
-                'discount_factor': self.discount_factor,
+                'epsilon': self.ep.epsilon,
+                'learning_rate': self.ep.learning_rate,
+                'discount_factor': self.ep.discount_factor,
                 'q_table_size': len(self.q_table),
-                'successful_returns': self.successful_returns,
-                'food_collected': self.total_food_collected,
-                'food_delivered': self.total_food_delivered,
+                'successful_returns': self.ep.successful_returns,
+                'food_collected': self.ep.total_food_collected,
+                'food_delivered': self.ep.total_food_delivered,
                 'policy': 'Q-learning'
             }
 
             self.learning_logger.log_episode(episode_data)
 
             # Salva Q-table periodicamente
-            if self.current_episode % 20 == 0:
+            if self.ep.current % 20 == 0:
                 self.learning_logger.save_q_table(self.q_table)
 
         # Log do episódio
         log().print(f"\n{'=' * 50}")
-        log().print(f"{self.name}: EPISÓDIO {self.current_episode} FINALIZADO")
+        log().print(f"{self.name}: EPISÓDIO {self.ep.current} FINALIZADO")
         log().print(f"{'=' * 50}")
         log().print(f"Sucesso: {'SIM' if success else 'NÃO'}")
-        log().print(f"Recompensa total: {self.episode_reward:.2f}")
-        log().print(f"Passos: {self.episode_steps}")
+        log().print(f"Recompensa total: {self.ep.reward:.2f}")
+        log().print(f"Passos: {self.ep.steps}")
 
         if self.problem == "foraging":
-            log().print(f"Comida apanhada: {self.total_food_collected}")
-            log().print(f"Comida entregue: {self.total_food_delivered}")
+            log().print(f"Comida apanhada: {self.ep.total_food_collected}")
+            log().print(f"Comida entregue: {self.ep.total_food_delivered}")
 
         if self.mode == "LEARNING":
-            log().print(f"🎲 ε atual: {self.epsilon:.3f}")
+            log().print(f"🎲 ε atual: {self.ep.epsilon:.3f}")
 
         # Guarda conhecimento
         self.save_knowledge()
@@ -170,7 +144,7 @@ class Phineas(Navigator2D):
     # ---------------------------------------------------
     # SENSORES
     # ---------------------------------------------------
-    def use_sensor(self) -> Observation:
+    def use_sensor(self, post_action: bool) -> None:
         obs = self._sensor.get_info(self)
         #self.state.update_sensor_data(True, obs)
 
@@ -185,11 +159,11 @@ class Phineas(Navigator2D):
 
         if obs.location:
             self.curr_observations[ObservationType.LOCATION] = obs.location
-            tile = getattr(obs.location.payload, 'tile_name', "").upper()
+            tile = getattr(obs.location.payload, 'tile', "EMPTY").upper()
             if tile == "NEST":
                 self.known_nest_position = self._position
 
-        return obs
+        #return obs
 
     def _estimate_objective_position(self, direction_vector: tuple[Direction, Direction]):
         #Estimar posicao farol com base na direcao dada
@@ -217,7 +191,7 @@ class Phineas(Navigator2D):
 
     def _update_sensor(self):
         self.curr_observations.clear()
-        return self.use_sensor()
+        return self.use_sensor(False)
 
     # ---------------------------------------------------
     # OBSERVAÇÃO
@@ -249,18 +223,18 @@ class Phineas(Navigator2D):
                     if self.problem == "foraging" and reward >= 40.0:
                         if not self.base_attributes.carrying:
                             self.base_attributes.carrying = True
-                            self.total_food_collected += 1
+                            self.ep.total_food_collected += 1
                             log().vprint(f"{self.name}: Apanhou comida!")
                         else:
                             self.base_attributes.carrying = False
-                            self.total_food_delivered += 1
-                            self.successful_returns += 1
+                            self.ep.total_food_delivered += 1
+                            self.ep.successful_returns += 1
                             log().vprint(f"{self.name}: Entregou comida no ninho!")
 
                 elif _last_attempted_action.name == "pick":
                     if self.problem == "foraging":
                         self.base_attributes.carrying = True
-                        self.total_food_collected += 1
+                        self.ep.total_food_collected += 1
                     elif self.problem == "lighthouse":
                         # No lighthouse, pick é o objetivo - NÃO chama end_episode aqui
                         # O ambiente enviará Observation.TERMINATE
@@ -269,8 +243,8 @@ class Phineas(Navigator2D):
                 elif _last_attempted_action.name == "drop":
                     if self.problem == "foraging":
                         self.base_attributes.carrying = False
-                        self.total_food_delivered += 1
-                        self.successful_returns += 1
+                        self.ep.total_food_delivered += 1
+                        self.ep.successful_returns += 1
                         log().vprint(f"{self.name}: Depositou no ninho!")
 
         elif obs.type == ObservationType.DENIED:
@@ -284,7 +258,7 @@ class Phineas(Navigator2D):
 
             # Determina sucesso baseado no problema
             if self.problem == "foraging":
-                success = self.total_food_delivered > 0
+                success = self.ep.total_food_delivered > 0
             elif self.problem == "lighthouse":
                 success = True
             else:
@@ -348,7 +322,7 @@ class Phineas(Navigator2D):
         if self.mode == "TEST": #caso esteja a testar - escolhe sempre a melhor acao
             return self._choose_best_q_action(state, valid_moves)
         else:
-            if random.random() > self.epsilon: #learning epsilon greedy
+            if random.random() > self.ep.epsilon: #learning epsilon greedy
                 return self._choose_best_q_action(state, valid_moves)
             else:
                 return random.choice(valid_moves)
@@ -388,15 +362,15 @@ class Phineas(Navigator2D):
         old_q = self.q_table.get((self.last_state, self.last_action), 0.0)
         # Recompensa intrinseca*************************************************
         exploration_bonus = 0.5 / (self.visit_counts.get(current_state, 0) + 1)
-        total_reward = self.last_extrinsic_reward + exploration_bonus
+        total_reward = self.ep.last_extrinsic_reward + exploration_bonus
         #melhor Q do próximo estado
         max_next_q = 0.0
         for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
             q = self.q_table.get((current_state, str(move)), 0.0)
             max_next_q = max(max_next_q, q)
         #atualização Q-learning
-        new_q = old_q + self.learning_rate * (
-                total_reward + self.discount_factor * max_next_q - old_q
+        new_q = old_q + self.ep.learning_rate * (
+                total_reward + self.ep.discount_factor * max_next_q - old_q
         )
         self.q_table[(self.last_state, self.last_action)] = new_q
 
@@ -508,16 +482,16 @@ class Phineas(Navigator2D):
     # PERSISTÊNCIA
     # ---------------------------------------------------
     def save_knowledge(self):
-        print("saving knowledge")
+        log().vprint("saving knowledge")
         try:
             # 1. Dados Base (Comuns a todos os problemas)
             data = {
                 'q_table': self.q_table,
                 'visit_counts': self.visit_counts,
-                'total_rewards': self.episode_rewards,
-                'total_steps': self.episode_steps_list,
-                'epsilon': self.epsilon,
-                'current_episode': self.current_episode,
+                'total_rewards': self.session.rewards,
+                'total_steps': self.session.steps_per_ep,
+                'epsilon': self.ep.epsilon,
+                'current_episode': self.ep.current,
                 'problem_type': self.problem  # Ajuda a validar se o save é compatível
             }
 
@@ -540,7 +514,10 @@ class Phineas(Navigator2D):
         except Exception:
             pass
 
-    def load_knowledge(self):
+    def load_knowledge(self, file=None):
+        if not file is None:    #load arbitrary kb
+            return
+
         if os.path.exists(self._KB_FILE):
             try:
                 with open(self._KB_FILE, "rb") as f:
@@ -555,14 +532,14 @@ class Phineas(Navigator2D):
 
                 # 2. Restaura Progresso (apenas se estivermos a aprender)
                 if self.mode == "LEARNING":
-                    self.epsilon = data.get('epsilon', self.epsilon)
-                    self.current_episode = data.get('current_episode', 0)
+                    self.ep.epsilon = data.get('epsilon', self.ep.epsilon)
+                    self.ep.current = data.get('current_episode', 0)
                 else:
-                    self.current_episode = 0
+                    self.ep.current = 0
 
                 # 3. Restaura Estatísticas
-                self.total_food_collected = data.get('total_food_collected', 0)
-                self.total_food_delivered = data.get('total_food_delivered', 0)
+                self.ep.total_food_collected = data.get('total_food_collected', 0)
+                self.ep.total_food_delivered = data.get('total_food_delivered', 0)
 
                 # 4. Restaura Memória Espacial (Funciona para ambos os problemas)
                 nest_pos = data.get('known_nest')
