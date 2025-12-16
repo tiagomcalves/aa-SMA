@@ -149,17 +149,17 @@ class Environment:
 
         # 1. Verifica Limites e Paredes
         if tile is None:
-            self.send_observation(agent, Observation.denied(action, -1.0));
+            self.send_observation(agent, Observation.denied(action, -1.0))
             return
         elif tile.collideable:
-            self.send_observation(agent, Observation.denied(action, -0.5));
+            self.send_observation(agent, Observation.denied(action, -0.5))
             return
 
         # 2. Verifica Colisão com Agentes
         for o_agent, o_data in self._agent_data.items():
             if o_agent is agent: continue
             if o_data.pos == target_pos:
-                self.send_observation(agent, Observation.denied(action, -0.2));
+                self.send_observation(agent, Observation.denied(action, -0.2))
                 return
 
         # 3. MOVIMENTO ACEITE
