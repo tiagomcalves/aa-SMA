@@ -33,7 +33,8 @@ def main():
                         action='store_true')
     parser.add_argument('-s', '--step', default=750, help='set a step delay (in milliseconds) (default is 750ms)',
                         type=int, metavar="ms")
-    parser.add_argument('-rl', '--learn', help='training mode', type=int, metavar="episodes")
+    parser.add_argument('-e', '--episodes', default=5, help='set number of episodes per simulation',
+                        type=int, metavar="episodes")
     parser.add_argument('-t', '--test', help='testing mode', action='store_true')
     parser.add_argument('-v', '--verbose', help="enable verbose output", action='store_true')
 
@@ -47,8 +48,8 @@ def main():
     if args.headless and args.renderer:
         raise AttributeError("Error: --headless and --renderer are mutually exclusive")
 
-    if args.learn and args.test:
-        raise AttributeError("Error: --learn and --test are mutually exclusive")
+    # if args.test:
+    #     raise AttributeError("Error: --learn and --test are mutually exclusive")
 
     # Inicializa logger COM NOME DO PROBLEMA
     Logger.initialize(verbose=args.verbose, problem_name=args.problem)  # CORRIGIDO
@@ -61,11 +62,16 @@ def main():
 
     sim.run()
 
-    if args.learn:
-        graph = GraphLoader(timestamp)
-        if not graph is None:
-            input("Show graph?")
+    graph = GraphLoader(timestamp, args.problem)
+    if not graph is None:
+        while True:
+            answer = input("Show graph of simulation? (y/n): ").strip().lower()
+            if answer in ("y", "n"):
+                break
+        if answer == "y":
             graph.show_graphs()
+    else:
+        print("Graphs are not available")
 
 
 if __name__ == '__main__':
