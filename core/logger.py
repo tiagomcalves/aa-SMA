@@ -6,6 +6,7 @@ from datetime import datetime
 import os
 
 
+
 class Logger:
     def __init__(self, verbose=False, problem_name="default"):
         self.verbose = verbose

@@ -89,3 +89,7 @@ class Agent(ABC):
     @abstractmethod
     def start_episode(self) -> None:
         pass
+
+    @abstractmethod
+    def register_reward(self, reward: float):
+        pass

@@ -16,26 +16,12 @@ class Ferb(Navigator2D):
         #self.char = properties.get("char", "F")
         self.policy = POLICY_REGISTRY[problem]
 
-        # Sistema de direção aleatória
-        self.random_walk = True  # Sempre caminhada aleatória quando não tem comida
-        self.wander_tendency = 0.8  # 80% chance de continuar na mesma direção
-
         log().print(f"{name}: Inicializado para {problem} ({type(self.policy).__name__})")
 
     def start_episode(self) -> None:
         # # Estado
         super().start_episode()
-        # self.base_attributes.carrying = False
-        # self.last_attempted_action = None
-        # self.episode_ended = False
-        #
-        # self.pos_history = []
-        # self.stuck_counter = 0
-        # self.panic_mode = 0
 
-        # Sistema de direção aleatória
-        # self.random_walk = True  # Sempre caminhada aleatória quando não tem comida
-        # self.wander_tendency = 0.8  # 80% chance de continuar na mesma direção
 
     # ---------------------------------------------------
     # OBSERVAÇÃO
@@ -88,13 +74,5 @@ class Ferb(Navigator2D):
         # Atualiza sensores
         if not self.has_observations():
             self._update_sensor(False)
-            # obs = self._sensor.get_info(self)
-            # self.state.update_sensor_data(True, obs)
-            # if obs.surroundings:
-            #     self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
-            # if obs.directions:
-            #     self.curr_observations[ObservationType.DIRECTION] = obs.directions
-            # if obs.location:
-            #     self.curr_observations[ObservationType.LOCATION] = obs.location
 
         return self.policy.act(self.name, self.curr_observations, self.base_attributes, self.action)

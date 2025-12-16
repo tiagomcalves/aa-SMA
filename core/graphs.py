@@ -18,7 +18,7 @@ class GraphLoader:
             if os.path.isfile(os.path.join(obj.KB_DIR, f))
                and f"{timestamp}" in f
         ]
-        print(obj.knowledgefiles)
+        log().vprint(obj.knowledgefiles)
 
         if len(obj.knowledgefiles) == 0:
             log().print(f"Graph: No knowledge files were found with timestamp {timestamp}")
