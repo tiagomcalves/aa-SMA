@@ -260,7 +260,9 @@ class Phineas(Navigator2D):
             if self.problem == "foraging":
                 success = self.ep.total_food_delivered > 0
             elif self.problem == "lighthouse":
-                success = True
+                success = True if obs.payload.reward > 0.0 else False
+                self.end_episode(success)
+
             else:
                 success = False
 
@@ -551,4 +553,4 @@ class Phineas(Navigator2D):
                     self.estimated_objective_position = Position(*obj_pos)
 
             except Exception:
-                pass
+                log().print(f"Error in load_knowledge(): exception reading file {self._KB_FILE}")

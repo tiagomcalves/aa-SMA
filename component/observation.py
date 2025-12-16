@@ -90,7 +90,7 @@ class StatusPayload:
 
 
 @dataclass
-class AcceptedMovePayload:
+class AcceptedMovePayload:  #unused
     direction: Direction
 
 

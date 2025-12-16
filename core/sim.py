@@ -11,7 +11,7 @@ from abstract import Agent
 from abstract.agent import AgentStatus
 from abstract.utils.action_builder import ActionBuilder
 from component.observation import Observation
-from core.logger import log
+from core.logger import ReportLogger, log
 from core.loader import ConfigLoader
 from core.scheduler import Scheduler
 from core.env import Environment
@@ -37,6 +37,7 @@ class Simulator:
 
         # Cria diretório de logs
         self._create_log_directory()
+        self.report_log = ReportLogger(timestamp, self._problem)
 
         # Define max steps
         self.max_steps = 1000
@@ -45,6 +46,7 @@ class Simulator:
         self._env = env
         self._agents = agents
         self._curr_time = timestamp
+
         self._boot_output()
 
     def _create_log_directory(self):
@@ -114,6 +116,7 @@ class Simulator:
             if self._scheduler.is_last_episode():
                 self.list_agents().remove(agent)
                 log().print(f"{agent.name} terminado")
+                self.report_log.retrieve_session_data(agent, self._scheduler.curr_episode() + 1)
 
             agent.status = AgentStatus.IDLE
             self._active_agents -= 1
@@ -175,6 +178,7 @@ class Simulator:
 
         self.tell_agents_to_terminate()
         log().print(f"SIMULAÇÃO CONCLUÍDA")
+        self.report_log.close()
 
 
     def _boot_output(self) -> None:
