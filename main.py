@@ -35,7 +35,7 @@ def main():
                         type=int, metavar="ms")
     parser.add_argument('-e', '--episodes', default=5, help='set number of episodes per simulation',
                         type=int, metavar="episodes")
-    parser.add_argument('-t', '--test', help='testing mode', action='store_true')
+    parser.add_argument('-t', '--test', help='force rl agents into testing mode', action='store_true')
     parser.add_argument('-v', '--verbose', help="enable verbose output", action='store_true')
 
     if len(sys.argv) == 1:

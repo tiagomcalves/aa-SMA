@@ -15,7 +15,6 @@ class Logger:
         # Cria diretórios para o problema específico
         if self.problem_name:
             os.makedirs(f"logs/{self.problem_name}/learning", exist_ok=True)
-            os.makedirs(f"logs/{self.problem_name}/test", exist_ok=True)
 
         print(f"Logger initialized for problem: {self.problem_name} {'--verbose' if verbose else ''}")
 
