@@ -53,7 +53,6 @@ class Simulator:
         log_dir = f"logs/{self._problem}"
         os.makedirs(log_dir, exist_ok=True)
         os.makedirs(f"{log_dir}/learning", exist_ok=True)
-        os.makedirs(f"{log_dir}/test", exist_ok=True)   # remove
 
     @staticmethod
     def create(args: Namespace, timestamp: float) -> Simulator:
@@ -175,7 +174,7 @@ class Simulator:
         _agents_list = "".join("\t\t - \"" + a.get_name() + "\"\n" for a in self._agents)
         log().print(f"""------------------------------------------------
 Simulation: \"{self._problem}\"
-Mode: {"TRAINING" if not self.args.test else "TESTING"}
+Mode: {"TESTING" if self.args.test else "LEARNING"}
 Max Steps: {self.max_steps}
 Logs: logs/{self._problem}/
 Agents: {len(self._agents)} loaded

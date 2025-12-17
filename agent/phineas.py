@@ -66,28 +66,28 @@ class Phineas(Navigator2D):
             if not stored_kb_timestamp:
                 raise ValueError(f"No KB timestamp argument in {self.name} config")
             
-            #self._get_kb_file(_KB_DIR, stored_kb_timestamp)
-            self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
+            self._KB_FILE = os.path.join(_KB_DIR, self._get_kb_file(_KB_DIR, stored_kb_timestamp))
+            #self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
 
         self.load_knowledge()
 
     # get file with partial timestamp
-    # def _get_kb_file(self, dir, timestamp):
-    #     knowledge_files = [
-    #             f for f in os.listdir(dir)
-    #             if os.path.isfile(os.path.join(dir, f))
-    #             and f"{timestamp}" in f and self.name in f
-    #         ]
+    def _get_kb_file(self, directory, timestamp):
+        knowledge_files = [
+                f for f in os.listdir(directory)
+                if os.path.isfile(os.path.join(directory, f))
+                and f"{timestamp}" in f and self.name in f
+            ]
         
-    #     print(knowledge_files)
-    #     if len(knowledge_files) == 0:
-    #         raise ValueError(f"No KB file found  in {self.name} config")
+        print(knowledge_files)
+        if len(knowledge_files) == 0:
+            raise ValueError(f"No KB file found  in {self.name} config")
     
-    #     if len(knowledge_files) > 1:
-    #         raise ValueError(f"More than one kb file was found with timestamp {timestamp}: {knowledge_files}")
-        
-    #           ...
-    #     pass
+        if len(knowledge_files) > 1:
+            raise ValueError(f"More than one kb file was found with timestamp {timestamp}: {knowledge_files}")
+
+        return knowledge_files[0]
+
 
 
     # ---------------------------------------------------
@@ -183,7 +183,7 @@ class Phineas(Navigator2D):
             if tile == "NEST":
                 self.known_nest_position = self._position
 
-        #return obs
+        return
 
     def _estimate_objective_position(self, direction_vector: tuple[Direction, Direction]):
         #Estimar posicao farol com base na direcao dada
