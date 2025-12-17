@@ -1,7 +1,7 @@
 # main.py
 import argparse
 from pathlib import Path
-from core.graphs import GraphLoader
+from core.graphs import PickleGraphLoader, SessionGraphLoader
 from core.logger import Logger
 
 
@@ -19,21 +19,34 @@ def main():
     # required arg
     parser.add_argument('problem', choices=subdirs, help='simulation problem')
     parser.add_argument('timestamp', help='timestamp')
+    parser.add_argument('-q', '--qlearning', help="show qlearning graphs", action='store_true')
 
     args = parser.parse_args()
 
     Logger.initialize(verbose=True, problem_name=args.problem)
 
-    graph = GraphLoader(args.timestamp, args.problem)
-    if not graph is None:
-        while True:
-            answer = input("Show graph of simulation? (y/n): ").strip().lower()
-            if answer in ("y", "n"):
-                break
-        if answer == "y":
-            graph.show_graphs()
+    if args.qlearning:
+        graph = PickleGraphLoader(args.timestamp, args.problem)
+        if not graph is None:
+            while True:
+                answer = input("Show learning graph of simulation? (y/n): ").strip().lower()
+                if answer in ("y", "n"):
+                    break
+            if answer == "y":
+                graph.show_graphs()
+        else:
+            print("Graphs are not available")
     else:
-        print("Graphs are not available")
+        graph = SessionGraphLoader(args.timestamp, args.problem)
+        if not graph is None:
+            while True:
+                answer = input("Show session graph of simulation? (y/n): ").strip().lower()
+                if answer in ("y", "n"):
+                    break
+            if answer == "y":
+                graph.show_graphs()
+        else:
+            print("Graphs are not available")
 
 
 if __name__ == '__main__':
