@@ -157,7 +157,7 @@ class Simulator:
                 should_render = self.args.renderer and (not self.args.test or not self.args.headless)
                 if should_render:
                     self._env.render()
-                    if not self.args.test:
+                    if self.args.test:
                         time.sleep(self._STEP_SECONDS)
                     else:
                         time.sleep(0.001)

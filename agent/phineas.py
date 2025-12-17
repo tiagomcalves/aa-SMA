@@ -136,7 +136,7 @@ class Phineas(Navigator2D):
             log().print(f"Comida entregue: {self.ep.total_food_delivered}")
 
         if self.mode == "LEARNING":
-            log().print(f"🎲 ε atual: {self.ep.epsilon:.3f}")
+            log().print(f"epsilon atual: {self.ep.epsilon:.3f}")
 
         # Guarda conhecimento
         self.save_knowledge()
