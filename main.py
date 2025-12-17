@@ -4,7 +4,7 @@ import sys
 import time
 from pathlib import Path
 
-from core.graphs import GraphLoader
+from core.graphs import PickleGraphLoader, SessionGraphLoader
 from core.renderer.r_handle import Renderer
 from core.sim import Simulator
 from core.module_importer import import_agents
@@ -62,17 +62,28 @@ def main():
 
     sim.run()
 
-    graph = GraphLoader(timestamp, args.problem)
-    if not graph is None:
+    if not args.test:
+        pickle_graph = PickleGraphLoader(timestamp, args.problem)
+        if not pickle_graph is None:
+            while True:
+                answer = input("Show learning graph of simulation? (y/n): ").strip().lower()
+                if answer in ("y", "n"):
+                    break
+            if answer == "y":
+                pickle_graph.show_graphs()
+        else:
+            print("Learning graphs are not available")
+
+    session_graph = SessionGraphLoader(timestamp, args.problem)
+    if not session_graph is None:
         while True:
-            answer = input("Show graph of simulation? (y/n): ").strip().lower()
+            answer = input("Show session graph of simulation? (y/n): ").strip().lower()
             if answer in ("y", "n"):
                 break
         if answer == "y":
-            graph.show_graphs()
+            session_graph.show_graphs()
     else:
-        print("Graphs are not available")
-
+        print("Session graphs are not available")
 
 if __name__ == '__main__':
     main()

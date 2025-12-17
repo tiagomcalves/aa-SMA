@@ -33,7 +33,7 @@ class Logger:
         """Cria um logger específico para aprendizagem do agente"""
         if agent_name not in self.learning_loggers:
             self.learning_loggers[agent_name] = LearningLogger(agent_name, timestamp, config or {}, self.problem_name)
-            self.vprint(f"📝 Created learning logger for agent: {agent_name}")
+            self.vprint(f"Created learning logger for agent: {agent_name}")
         return self.learning_loggers[agent_name]
 
     def get_learning_logger(self, agent_name: str) -> Optional['LearningLogger']:
@@ -51,22 +51,6 @@ class Logger:
             logger.log_episode(episode_data)
 
     # ---------------------------------------------------
-    # TESTE
-    # ---------------------------------------------------
-    def create_test_logger(self, test_name: str) -> 'TestLogger':
-        """Cria um logger específico para modo de teste"""
-        if test_name not in self.test_loggers:
-            self.test_loggers[test_name] = TestLogger(test_name, self.problem_name)
-            self.vprint(f"🧪 Created test logger: {test_name}")
-        return self.test_loggers[test_name]
-
-    def log_test_result(self, test_name: str, result_data: Dict[str, Any]) -> None:
-        """Regista um resultado de teste"""
-        logger = self.get_test_logger(test_name)
-        if logger:
-            logger.log_result(result_data)
-
-    # ---------------------------------------------------
     # GERAL
     # ---------------------------------------------------
     def close_all(self):
@@ -79,7 +63,7 @@ class Logger:
         for logger in self.test_loggers.values():
             logger.close()
 
-        self.vprint("✅ All logs saved")
+        self.vprint("All logs saved")
 
     @staticmethod
     def initialize(verbose=False, problem_name="default") -> None:  # CORRIGIDO: aceita 2 argumentos
@@ -159,7 +143,7 @@ class LearningLogger:
 
             return True
         except Exception as e:
-            print(f"❌ Error saving Q-table: {e}")
+            print(f"Error saving Q-table: {e}")
             return False
 
     def load_q_table(self) -> Optional[Dict]:
@@ -186,7 +170,7 @@ class LearningLogger:
         except FileNotFoundError:
             return None
         except Exception as e:
-            print(f"❌ Error loading Q-table: {e}")
+            print(f"Error loading Q-table: {e}")
             return None
 
     def close(self):
@@ -205,7 +189,7 @@ class ReportLogger:
         os.makedirs(log_dir, exist_ok=True)
 
         # Ficheiros de output
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.json_file = f"{log_dir}/{problem}_{timestamp}.json"
         self.csv_file = f"{log_dir}/{problem}_{timestamp}.csv"
 
@@ -217,7 +201,7 @@ class ReportLogger:
         with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             writer.writerow([
-                'name', 'rewards', 'successes', 'success_rate', 
+                'name', 'steps', 'rewards', 'successes', 'success_rate',
                 'avg_total_reward', 'avg_steps', 'avg_discounted_reward',
                 'min_reward','max_reward',
                 'total_successful','total_failed', 
@@ -238,7 +222,7 @@ class ReportLogger:
             'food_delivered': agent.ep.total_food_delivered
         }
 
-        log().print(agent_session)
+        #log().print(agent_session)
         agent_session = {**agent_session, **self._calculate_statistics(agent_session)}
         
         self.results.append(agent_session)
@@ -286,7 +270,6 @@ class ReportLogger:
 
         # Calcula recompensa descontada (γ=0.9)
         discounted_rewards = []
-        print("rewards")
         for ep in range(agent_data.get('episodes', 1)):
             reward = agent_data.get('rewards', 0)[ep]
             steps_count = agent_data.get('steps', 1)[ep]
@@ -314,6 +297,7 @@ class ReportLogger:
             for line in self.results:
                 writer.writerow([
                     line.get('name', 'name'),
+                    line.get('steps', []),
                     line.get('rewards', []),
                     line.get('successes', []),
                     line.get('success_rate', '-1'),
@@ -375,7 +359,7 @@ def load_learning_data(problem_name: str, agent_name: str = None):
             df['agent'] = os.path.basename(file).split('_')[0]
             all_data.append(df)
         except Exception as e:
-            print(f"⚠️ Error reading {file}: {e}")
+            print(f"Error reading {file}: {e}")
 
     if all_data:
         return pd.concat(all_data, ignore_index=True)
@@ -388,17 +372,17 @@ def print_learning_summary(problem_name: str, agent_name: str):
     data = load_learning_data(problem_name, agent_name)
 
     if data is None or data.empty:
-        print(f"📭 No learning data found for agent {agent_name} in problem {problem_name}")
+        print(f"No learning data found for agent {agent_name} in problem {problem_name}")
         return
 
-    print(f"\n📊 RESUMO DE APRENDIZAGEM: {agent_name} ({problem_name})")
-    print(f"📈 Total de episódios: {len(data)}")
-    print(f"💰 Recompensa média: {data['total_reward'].mean():.2f}")
-    print(f"👣 Passos médios: {data['steps'].mean():.1f}")
-    print(f"🎯 Taxa de sucesso: {data['success'].mean() * 100:.1f}%")
+    print(f"\nRESUMO DE APRENDIZAGEM: {agent_name} ({problem_name})")
+    print(f"Total de episódios: {len(data)}")
+    print(f"Recompensa média: {data['total_reward'].mean():.2f}")
+    print(f"Passos médios: {data['steps'].mean():.1f}")
+    print(f"Taxa de sucesso: {data['success'].mean() * 100:.1f}%")
 
     if len(data) >= 10:
         last_10 = data.tail(10)
-        print(f"\n📈 ÚLTIMOS 10 EPISÓDIOS:")
-        print(f"💰 Recompensa média: {last_10['total_reward'].mean():.2f}")
-        print(f"🎯 Taxa de sucesso: {last_10['success'].mean() * 100:.1f}%")
+        print(f"\nÚLTIMOS 10 EPISÓDIOS:")
+        print(f"Recompensa média: {last_10['total_reward'].mean():.2f}")
+        print(f"Taxa de sucesso: {last_10['success'].mean() * 100:.1f}%")
