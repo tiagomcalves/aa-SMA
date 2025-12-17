@@ -19,14 +19,15 @@
       "learning_rate": 0.1,
       "discount_factor": 0.9,
       "epsilon": 0.1,
-      "kb":"123123213"
+      "kb":"1765982780.3500574"
     },
     "another_phineas": {
       "starting_position": [9, 9],
       "char": "A",
       "learning_rate": 0.1,
       "discount_factor": 0.9,
-      "epsilon": 0.1
+      "epsilon": 0.1,
+      "kb":"1765982780.3500574"
     },
     "the_ferb": {
       "starting_position": [0, 0],

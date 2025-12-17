@@ -65,23 +65,13 @@ class Simulator:
         agents_env_dict = {}
 
         for a_key, a_data in agents_json_data.items():
-            is_ferb = "Ferb" in a_key or "ferb" in a_data.get("class", "")
-
             a_data["timestamp"] = timestamp
 
-            if not args.test:
-                if "phineas" in a_key.lower():
-                    a_data["class"] = "agent.phineas.Phineas"
-                    a_data["mode"] = "LEARNING"
-                    if "epsilon" not in a_data: a_data["epsilon"] = 0.1
-                else:
-                    a_data["class"] = "agent.ferb.Ferb"
+            if "phineas" in a_key.lower():
+                a_data["class"] = "agent.phineas.Phineas"
+                a_data["mode"] = "TEST" if args.test else "LEARNING"
             else:
-                if is_ferb:
-                    a_data["class"] = "agent.ferb.Ferb"
-                else:
-                    a_data["class"] = "agent.phineas.Phineas"
-                    a_data["mode"] = "TEST"
+                a_data["class"] = "agent.ferb.Ferb"
 
             _new_agent = Agent.create(args.problem, a_key, a_data)
             agents_ref_list.append(_new_agent)
