@@ -269,20 +269,19 @@ class Phineas(Navigator2D):
 
         elif obs.type == ObservationType.DENIED:
             self.base_attributes.stuck_counter += 1
-            self.register_reward(-0.1)
+            self.register_reward(obs.payload.reward)
 
         elif obs.type == ObservationType.TERMINATE:
             """CRÍTICO: Recebeu sinal para terminar episódio"""
-            reward = obs.payload.reward if obs.payload else 0.0
-            self.register_reward(reward)
+            reward = obs.payload.reward
+            if reward != 0.0:   # not a simulation shutdown
+                self.register_reward(reward)
 
             # Determina sucesso baseado no problema
             if self.problem == "foraging":
                 success = self.ep.total_food_delivered > 0
             elif self.problem == "lighthouse":
-                success = True if obs.payload.reward > 0.0 else False
-                self.end_episode(success)
-
+                success = True if reward > 0.0 else False
             else:
                 success = False
 
@@ -290,7 +289,7 @@ class Phineas(Navigator2D):
             self.status = AgentStatus.TERMINATED
             self.end_episode(success=success)
 
-            log().print(f"🏁 {self.name}: Recebeu TERMINATE. Episódio finalizado.")
+            log().print(f"{self.name}: Recebeu TERMINATE. Episódio finalizado.")
 
     # ---------------------------------------------------
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
