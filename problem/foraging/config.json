@@ -15,7 +15,6 @@
       "discount_factor": 0.9,
       "epsilon": 0.1
     },
-
     "Ferb_The_Helper": {
       "starting_position": [1, 2],
       "char": "H"

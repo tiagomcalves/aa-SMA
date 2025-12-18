@@ -123,7 +123,7 @@ class Environment:
 
     def get_objectives(self):
         objs = {}
-        for name in ["Objective", "OBJECTIVE", "Food", "FOOD", "Nest", "NEST"]:
+        for name in ["OBJECTIVE", "FOOD", "NEST"]:
             objs.update(self._map.get_entity_by_name(name))
         return objs
 
@@ -140,7 +140,7 @@ class Environment:
         direction = action.params.get("direction")
 
         if direction == Direction.NONE:
-            self.send_observation(agent, Observation.denied(action, -2.0))
+            self.send_observation(agent, Observation.denied(action, REWARD.STAND_STILL))
             return
 
         current_pos = self._agent_data[agent].pos
@@ -149,17 +149,17 @@ class Environment:
 
         # 1. Verifica Limites e Paredes
         if tile is None:
-            self.send_observation(agent, Observation.denied(action, -1.0))
+            self.send_observation(agent, Observation.denied(action, REWARD.OUT_OF_BOUNDS))
             return
         elif tile.collideable:
-            self.send_observation(agent, Observation.denied(action, -0.5))
+            self.send_observation(agent, Observation.denied(action, REWARD.BUMP_COLLIDEABLE))
             return
 
         # 2. Verifica Colisão com Agentes
         for o_agent, o_data in self._agent_data.items():
             if o_agent is agent: continue
             if o_data.pos == target_pos:
-                self.send_observation(agent, Observation.denied(action, -0.2))
+                self.send_observation(agent, Observation.denied(action, REWARD.BUMP_AGENT))
                 return
 
         # 3. MOVIMENTO ACEITE
@@ -185,7 +185,7 @@ class Environment:
             return
 
         # Movimento normal
-        self.send_observation(agent, Observation.accepted(action, -1.0))
+        self.send_observation(agent, Observation.accepted(action, REWARD.MOVED))
 
     def agent_pick(self, action: Action):
         # Fallback para pick manual
@@ -204,12 +204,12 @@ class Environment:
             if agent_data.carrying is None:
                 agent_data.carrying = 1.0
                 self._map.remove_entity(agent_data.pos)
-                self.send_observation(action.agent, Observation.accepted(action, 50.0))
+                self.send_observation(action.agent, Observation.accepted(action, tile.reward))
             else:
-                self.send_observation(action.agent, Observation.denied(action, -0.1))
+                self.send_observation(action.agent, Observation.denied(action, REWARD.DENY_PICK))
             return
 
-        self.send_observation(action.agent, Observation.denied(action, -0.1))
+        self.send_observation(action.agent, Observation.denied(action, REWARD.DENY_PICK))
 
     def agent_drop(self, action: Action):
         agent_data = self._agent_data[action.agent]
@@ -235,8 +235,7 @@ class Environment:
             target_pos = None
 
             if agent_data.carrying is not None:
-                nests = self._map.get_entity_by_name("Nest")
-                if not nests: nests = self._map.get_entity_by_name("NEST")
+                nests = self._map.get_entity_by_name("NEST")
                 if nests:
                     min_dist = float('inf')
                     best_n = None
@@ -245,8 +244,7 @@ class Environment:
                         if dist < min_dist: min_dist = dist; best_n = n_pos
                     target_pos = best_n
             else:
-                foods = self._map.get_entity_by_name("Food")
-                #if not foods: foods = self._map.get_entity_by_name("FOOD")
+                foods = self._map.get_entity_by_name("FOOD")
                 if foods:
                     min_dist = float('inf')
                     best_f = None

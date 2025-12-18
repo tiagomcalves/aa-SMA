@@ -32,7 +32,7 @@ class Simulator:
     def __init__(self, env: Environment, agents: list[Agent], args: Namespace, timestamp: float):
         self.args = args
         self._problem = args.problem
-        self._STEP_SECONDS = args.step / 1000 if not self.args.test else 0
+        self._STEP_SECONDS = args.step / 1000
         self._active_agents = 0
 
         # Cria diretório de logs
@@ -40,7 +40,7 @@ class Simulator:
         self.report_log = ReportLogger(timestamp, self._problem)
 
         # Define max steps
-        self.max_steps = 1000
+        self.max_steps = 100
         self._scheduler = Scheduler(self.max_steps, args.episodes)
 
         self._env = env
@@ -105,17 +105,24 @@ class Simulator:
             if self._scheduler.is_last_episode():
                 self.list_agents().remove(agent)
                 log().print(f"{agent.name} terminado")
-                self.report_log.retrieve_session_data(agent, self._scheduler.curr_episode() + 1)
+                self.report_log.retrieve_session_data(agent, self._scheduler.curr_episode()+1)
 
             agent.status = AgentStatus.IDLE
             self._active_agents -= 1
             return True
         return False
+    
+    def terminate_all_agents(self):
+        for a in self._agents[:]:
+            if a.status == AgentStatus.TERMINATED:
+                self.terminate_agent(a)
+                continue
 
     def run(self) -> None:
 
         while not self._scheduler.out_of_episode():
 
+            log().print("============================================================")
             log().print(f"Episódio {self._scheduler.curr_episode() + 1}")
 
             sensor = Sensor(self._env)
@@ -143,19 +150,18 @@ class Simulator:
                     action = a.act()
                     self._env.act(action, a)
 
-                should_render = self.args.renderer and (not self.args.test or not self.args.headless)
+
+                should_render = not self.args.headless
                 if should_render:
                     self._env.render()
-                    if self.args.test:
-                        time.sleep(self._STEP_SECONDS)
-                    else:
-                        time.sleep(0.001)
-
-                if not self.args.test:
                     log().print("Step: ", str(self._scheduler.curr_step()).rjust(3, '0'))
                     log().print("-----------------------------------------------")
+                    time.sleep(self._STEP_SECONDS)
 
                 self.think()
+
+            self.tell_agents_to_terminate()
+            self.terminate_all_agents()
 
             log().print("============================================================")
             log().print(f"EPISODIO CONCLUÍDO {"(MAX STEPS ALCANÇADO)" if self._scheduler.out_of_steps() else ""}")
@@ -165,7 +171,7 @@ class Simulator:
             if not self._scheduler.out_of_episode():
                 self._env = self.initial_state.env.clone()
 
-        self.tell_agents_to_terminate()
+        print("agentes ativos:", self._active_agents)
         log().print(f"SIMULAÇÃO CONCLUÍDA")
         self.report_log.close()
 

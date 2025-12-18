@@ -221,6 +221,8 @@ class ReportLogger:
             'food_delivered': agent.ep.total_food_delivered
         }
 
+        print("GATHERED MAX EPISODES:", agent_session['episodes'])
+
         #log().print(agent_session)
         agent_session = {**agent_session, **self._calculate_statistics(agent_session)}
         
