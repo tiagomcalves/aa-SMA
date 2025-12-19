@@ -166,7 +166,7 @@ class Environment:
         agent_data = self._agent_data.get(agent)
         agent_data.pos = target_pos
 
-        # --- AUTO-PICKUP (CRÍTICO) ---
+        # --- AUTO-PICKUP  ---
         tile_name = tile.name.upper()
 
         if tile_name in ["FOOD", "RESOURCE", "GARBAGE"] and agent_data.carrying is None:
@@ -178,7 +178,7 @@ class Environment:
 
         # --- AUTO-DROP ---
         if tile_name == "NEST" and agent_data.carrying is not None:
-            reward = 100.0 * agent_data.carrying
+            reward = 200.0 * agent_data.carrying
             agent_data.carrying = None
             log().print(f">>> {action.agent.name} AUTO-DEPOSITED at NEST!")
             self.send_observation(agent, Observation.accepted(action, reward))

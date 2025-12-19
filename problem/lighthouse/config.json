@@ -20,18 +20,6 @@
       "discount_factor": 0.9,
       "epsilon": 0.1,
       "kb":"1766067386.078547"
-    },
-    "another_phineas": {
-      "starting_position": [9, 9],
-      "char": "A",
-      "learning_rate": 0.1,
-      "discount_factor": 0.9,
-      "epsilon": 0.1,
-      "kb":"1766067386.078547"
-    },
-    "the_ferb": {
-      "starting_position": [0, 0],
-      "char": "F"
     }
   }
 }
