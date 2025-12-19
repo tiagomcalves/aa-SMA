@@ -17,6 +17,7 @@ class ObservationType(Enum):
     DENIED = "denied"
     ACCEPTED = "accepted"
     TERMINATE = "terminate"
+    RESPONSE = "response"
 
 
 class Observation:
@@ -121,6 +122,11 @@ class EmptyPayload:
     pass
 
 
+@dataclass
+class ResponsePayload:
+    reward: float
+
+
 OBSERVATION_PAYLOADS = {
     ObservationType.SURROUNDINGS: SurroundingsPayload,
     ObservationType.STATUS: StatusPayload,
@@ -129,6 +135,7 @@ OBSERVATION_PAYLOADS = {
     ObservationType.DENIED: DeniedPayload,
     ObservationType.ACCEPTED: AcceptedPayload,
     ObservationType.TERMINATE: AcceptedPayload,
+    ObservationType.RESPONSE: ResponsePayload,
 }
 
 
