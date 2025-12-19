@@ -42,10 +42,10 @@ class Ferb(Navigator2D):
                     else:
                         self.base_attributes.carrying = False
 
-            accepted_action = obs.payload.action
+            accepted_action = obs.payload.action.name
 
-            if accepted_action.name == "move":
-                direction = accepted_action.params.get("direction")
+            if accepted_action == "move":
+                direction = obs.payload.action.params.get("direction")
                 if direction:
                     self._position = self._position + direction
                     # Guarda histórico de posições
@@ -60,9 +60,12 @@ class Ferb(Navigator2D):
             self.base_attributes.stuck_counter += 1
 
         elif obs.type == ObservationType.TERMINATE:
-            self.register_reward(obs.payload.reward)
+            reward = obs.payload.reward
+            if reward != 0.0:   # not a simulation shutdown
+                self.register_reward(reward)
+
             self.status = AgentStatus.TERMINATED
-            success = True if obs.payload.reward > 0.0 else False
+            success = True if reward > 0.0 or self.ep.total_food_delivered > 0 else False
             self.end_episode(success)
 
 

@@ -35,7 +35,7 @@ def main():
                         type=int, metavar="ms")
     parser.add_argument('-e', '--episodes', default=5, help='set number of episodes per simulation',
                         type=int, metavar="episodes")
-    parser.add_argument('-t', '--test', help='testing mode', action='store_true')
+    parser.add_argument('-t', '--test', help='force rl agents into testing mode', action='store_true')
     parser.add_argument('-v', '--verbose', help="enable verbose output", action='store_true')
 
     if len(sys.argv) == 1:
@@ -48,11 +48,8 @@ def main():
     if args.headless and args.renderer:
         raise AttributeError("Error: --headless and --renderer are mutually exclusive")
 
-    # if args.test:
-    #     raise AttributeError("Error: --learn and --test are mutually exclusive")
-
-    # Inicializa logger COM NOME DO PROBLEMA
-    Logger.initialize(verbose=args.verbose, problem_name=args.problem)  # CORRIGIDO
+    # Inicializa logger
+    Logger.initialize(verbose=args.verbose, problem_name=args.problem)
 
     import_agents()
     sim = Simulator.create(args, timestamp)

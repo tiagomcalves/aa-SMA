@@ -15,7 +15,6 @@ class Logger:
         # Cria diretórios para o problema específico
         if self.problem_name:
             os.makedirs(f"logs/{self.problem_name}/learning", exist_ok=True)
-            os.makedirs(f"logs/{self.problem_name}/test", exist_ok=True)
 
         print(f"Logger initialized for problem: {self.problem_name} {'--verbose' if verbose else ''}")
 
@@ -221,6 +220,8 @@ class ReportLogger:
             'food_collected': agent.ep.total_food_collected, 
             'food_delivered': agent.ep.total_food_delivered
         }
+
+        print("GATHERED MAX EPISODES:", agent_session['episodes'])
 
         #log().print(agent_session)
         agent_session = {**agent_session, **self._calculate_statistics(agent_session)}

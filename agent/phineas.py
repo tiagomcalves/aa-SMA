@@ -24,6 +24,25 @@ class Phineas(Navigator2D):
         _KB_DIR = f"logs/{problem}/kb/"
         os.makedirs(_KB_DIR, exist_ok=True)
 
+        """
+            problem specific attributes
+        """
+        #estado interno para o problema foraging e q_table
+        self.q_table = {}
+        self.visit_counts = {}
+
+        #memoria espacial para ter nocao do ninho foraging
+        self.known_nest_position: Optional[Position] = self._position
+        self.my_estimated_position = self._position
+
+        # Para lighthouse - estimativa de posição do farol
+        self.estimated_objective_position: Optional[Position] = None
+
+        """ ------------------------------ """
+
+        self.last_state = None
+        self.last_action = None
+        
         if self.mode == "LEARNING":
 
             self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{self.timestamp}.pkl"
@@ -43,31 +62,32 @@ class Phineas(Navigator2D):
             self.learning_logger = log().create_learning_logger(name, self.timestamp, agent_config)
             #self.learning_logger = log().create_learning_logger(name, self.timestamp, self.ep)
         else:
-            stored_kb_timestamp = "1765846972.8892236"
-            self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
-
-
-        self.last_state = None
-        self.last_action = None
-
-        """
-            problem specific attributes
-        """
-        #estado interno para o problema foraging e q_table
-        #self.carrying = False
-        self.q_table = {}
-        self.visit_counts = {}
-
-        #memoria espacial para ter nocao do ninho foraging
-        self.known_nest_position: Optional[Position] = self._position
-        self.my_estimated_position = self._position
-
-        # Para lighthouse - estimativa de posição do farol
-        self.estimated_objective_position: Optional[Position] = None
-
-        """ ------------------------------ """
+            stored_kb_timestamp = properties.get('kb', False)
+            if not stored_kb_timestamp:
+                raise ValueError(f"No KB timestamp argument in {self.name} config")
+            
+            self._KB_FILE = os.path.join(_KB_DIR, self._get_kb_file(_KB_DIR, stored_kb_timestamp))
+            #self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
 
         self.load_knowledge()
+
+    # get file with partial timestamp
+    def _get_kb_file(self, directory, timestamp):
+        knowledge_files = [
+                f for f in os.listdir(directory)
+                if os.path.isfile(os.path.join(directory, f))
+                and f"{timestamp}" in f and self.name in f
+            ]
+        
+        print(knowledge_files)
+        if len(knowledge_files) == 0:
+            raise ValueError(f"No KB file found  in {self.name} config")
+    
+        if len(knowledge_files) > 1:
+            raise ValueError(f"More than one kb file was found with timestamp {timestamp}: {knowledge_files}")
+
+        return knowledge_files[0]
+
 
 
     # ---------------------------------------------------
@@ -142,7 +162,7 @@ class Phineas(Navigator2D):
         self.save_knowledge()
 
     # ---------------------------------------------------
-    # SENSORES
+    # SENSOR
     # ---------------------------------------------------
     def use_sensor(self, post_action: bool) -> None:
         obs = self._sensor.get_info(self)
@@ -163,7 +183,7 @@ class Phineas(Navigator2D):
             if tile == "NEST":
                 self.known_nest_position = self._position
 
-        #return obs
+        return
 
     def _estimate_objective_position(self, direction_vector: tuple[Direction, Direction]):
         #Estimar posicao farol com base na direcao dada
@@ -249,20 +269,19 @@ class Phineas(Navigator2D):
 
         elif obs.type == ObservationType.DENIED:
             self.base_attributes.stuck_counter += 1
-            self.register_reward(-0.1)
+            self.register_reward(obs.payload.reward)
 
         elif obs.type == ObservationType.TERMINATE:
             """CRÍTICO: Recebeu sinal para terminar episódio"""
-            reward = obs.payload.reward if obs.payload else 0.0
-            self.register_reward(reward)
+            reward = obs.payload.reward
+            if reward != 0.0:   # not a simulation shutdown
+                self.register_reward(reward)
 
             # Determina sucesso baseado no problema
             if self.problem == "foraging":
                 success = self.ep.total_food_delivered > 0
             elif self.problem == "lighthouse":
-                success = True if obs.payload.reward > 0.0 else False
-                self.end_episode(success)
-
+                success = True if reward > 0.0 else False
             else:
                 success = False
 
@@ -270,32 +289,11 @@ class Phineas(Navigator2D):
             self.status = AgentStatus.TERMINATED
             self.end_episode(success=success)
 
-            log().print(f"🏁 {self.name}: Recebeu TERMINATE. Episódio finalizado.")
+            log().print(f"{self.name}: Recebeu TERMINATE. Episódio finalizado.")
 
     # ---------------------------------------------------
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
     # ---------------------------------------------------
-    """
-    def _is_oscillating(self) -> bool:
-        if len(self.base_attributes.pos_history) < 6:
-            return False
-        unique_pos = set(list(self.base_attributes.pos_history)[-6:])
-        return len(unique_pos) <= 2
-    """
-    """
-    def _get_valid_moves(self) -> list[Direction]: #movimentos validos
-        obs_surr = self.curr_observations.get(ObservationType.SURROUNDINGS)
-        valid_moves = []
-        if obs_surr:
-            bad_tiles = ["#", "WALL", "OBSTACLE", "X", "W"]
-            cells = obs_surr.payload.cells
-            for d, c in cells.items():
-                if d != Direction.NONE and str(c).upper().strip() not in bad_tiles:
-                    valid_moves.append(d)
-        else:
-            valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-        return valid_moves
-    """
 
     def _navigate_towards_target(self, target: Optional[Position], valid_moves: list) -> Direction:
         #andar para alvo
@@ -315,7 +313,6 @@ class Phineas(Navigator2D):
 
         return best_move if best_move else random.choice(valid_moves)
 
-
     def _choose_q_learning_move(self, valid_moves: list) -> Direction: #choose com q-learning
         state = self._get_state_key()
         self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
@@ -329,7 +326,6 @@ class Phineas(Navigator2D):
             else:
                 return random.choice(valid_moves)
 
-
     def _choose_best_q_action(self, state: str, valid_moves: list) -> Direction: #escolher acao com melhor q
         best_q = float('-inf')
         best_actions = []
@@ -341,7 +337,6 @@ class Phineas(Navigator2D):
             elif q == best_q:
                 best_actions.append(move)
         return random.choice(best_actions) if best_actions else random.choice(valid_moves)
-
 
     def _get_state_key(self) -> str: #chave de estado para o q-learning
         if self.problem == "foraging":
@@ -356,7 +351,6 @@ class Phineas(Navigator2D):
                 return f"Dir:None|Pos:{self._position.x},{self._position.y}"
         else:
             return f"Pos:{self._position.x},{self._position.y}"
-
 
     def _learn(self, current_state: str):#atualizar q-table
         if not self.last_state or not self.last_action:
@@ -484,6 +478,9 @@ class Phineas(Navigator2D):
     # PERSISTÊNCIA
     # ---------------------------------------------------
     def save_knowledge(self):
+        if self.mode != "LEARNING":
+            return
+        
         log().vprint("saving knowledge")
         try:
             # 1. Dados Base (Comuns a todos os problemas)
@@ -517,8 +514,8 @@ class Phineas(Navigator2D):
             pass
 
     def load_knowledge(self, file=None):
-        if not file is None:    #load arbitrary kb
-            return
+        #if not file is None:    #load arbitrary kb
+        #    return
 
         if os.path.exists(self._KB_FILE):
             try:
