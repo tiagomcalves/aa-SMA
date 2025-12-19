@@ -3,7 +3,6 @@ import pickle # para guardar biblioteca knowledge
 import os
 from dataclasses import replace
 from typing import Optional
-from collections import deque
 
 from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D, CurrLearningEpisode, SessionData, BaseAttributes
@@ -60,15 +59,12 @@ class Phineas(Navigator2D):
                 "problem": problem
             }
             self.learning_logger = log().create_learning_logger(name, self.timestamp, agent_config)
-            #self.learning_logger = log().create_learning_logger(name, self.timestamp, self.ep)
         else:
             stored_kb_timestamp = properties.get('kb', False)
             if not stored_kb_timestamp:
                 raise ValueError(f"No KB timestamp argument in {self.name} config")
             
             self._KB_FILE = os.path.join(_KB_DIR, self._get_kb_file(_KB_DIR, stored_kb_timestamp))
-            #self._KB_FILE = f"{_KB_DIR}kb_{self.name}_{stored_kb_timestamp}.pkl"
-
         self.load_knowledge()
 
     # get file with partial timestamp
@@ -87,12 +83,9 @@ class Phineas(Navigator2D):
             raise ValueError(f"More than one kb file was found with timestamp {timestamp}: {knowledge_files}")
 
         return knowledge_files[0]
-
-
-
-    # ---------------------------------------------------
+    # ***
     # GESTÃO DE EPISÓDIOS
-    # ---------------------------------------------------
+    # ***
     def start_episode(self):
         """Inicia um novo episódio"""
         if self.mode == "LEARNING":
@@ -105,22 +98,18 @@ class Phineas(Navigator2D):
                 epsilon=self.ep.epsilon)
         else:
             super().start_episode()
-
-        # Reset posição estimada do objetivo (só para lighthouse)
         if self.problem == "lighthouse":
-            self.estimated_objective_position = None
+            self.estimated_objective_position = None #reset posicao estimada lighthouse
 
         log().vprint(f"{self.name}: Início Episódio {self.ep.current}")
 
-
     def end_episode(self, success: bool = False):
         super().end_episode(success)
-
-        #Atualiza epsilon (apenas em modo LEARNING) - desvio dos dadoss egundo o tiago alves
+        #Atualiza epsilon - desvio dos dadoss egundo o tiago alves
         if self.mode == "LEARNING":
             self.ep.epsilon = max(0.01, self.ep.epsilon * 0.995)
 
-        # REGISTO NO LOGGER (apenas para Q-learning em modo LEARNING)
+        # REGISTO NO LOGGER
         if self.mode == "LEARNING" and self.learning_logger:
             episode_data = {
                 'episode': self.ep.current,
@@ -136,14 +125,12 @@ class Phineas(Navigator2D):
                 'food_delivered': self.ep.total_food_delivered,
                 'policy': 'Q-learning'
             }
-
             self.learning_logger.log_episode(episode_data)
-
-            # Salva Q-table periodicamente
+            #guardar q-table
             if self.ep.current % 20 == 0:
                 self.learning_logger.save_q_table(self.q_table)
 
-        # Log do episódio
+        #Log do episódio
         log().print(f"\n{'=' * 50}")
         log().print(f"{self.name}: EPISÓDIO {self.ep.current} FINALIZADO")
         log().print(f"{'=' * 50}")
@@ -158,25 +145,21 @@ class Phineas(Navigator2D):
         if self.mode == "LEARNING":
             log().print(f"epsilon atual: {self.ep.epsilon:.3f}")
 
-        # Guarda conhecimento
         self.save_knowledge()
 
-    # ---------------------------------------------------
+    # ***
     # SENSOR
-    # ---------------------------------------------------
+    # ***
     def use_sensor(self, post_action: bool) -> None:
         obs = self._sensor.get_info(self)
-        #self.state.update_sensor_data(True, obs)
 
         if obs.surroundings:
             self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
 
         if obs.directions:
             self.curr_observations[ObservationType.DIRECTION] = obs.directions
-            # Para lighthouse, estima posição do farol
             if self.problem == "lighthouse" and obs.directions.payload:
                 self._estimate_objective_position(obs.directions.payload.direction)
-
         if obs.location:
             self.curr_observations[ObservationType.LOCATION] = obs.location
             tile = getattr(obs.location.payload, 'tile', "EMPTY").upper()
@@ -186,12 +169,9 @@ class Phineas(Navigator2D):
         return
 
     def _estimate_objective_position(self, direction_vector: tuple[Direction, Direction]):
-        #Estimar posicao farol com base na direcao dada
-        x_dir, y_dir = direction_vector
-
-        #Se não temos estimativa inicial, assume que o farol está longe
+        x_dir, y_dir = direction_vector #Estimar posicao farol com base na direcao dada
         if not self.estimated_objective_position:
-            #Assume que o farol está a uma distância "grande" na direção indicada
+        #Se não temos estimativa inicial, assume que o farol está longe
             large_distance = 20
             self.estimated_objective_position = Position(
                 self._position.x + (
@@ -199,11 +179,9 @@ class Phineas(Navigator2D):
                 self._position.y + (
                         large_distance * (1 if y_dir == Direction.DOWN else -1 if y_dir == Direction.UP else 0))
             )
-        else:
-            #Refina estimativa baseada na nova direção
+        else: #nova estimativa
             dx = 1 if x_dir == Direction.RIGHT else -1 if x_dir == Direction.LEFT else 0
             dy = 1 if y_dir == Direction.DOWN else -1 if y_dir == Direction.UP else 0
-
             self.estimated_objective_position = Position(
                 self.estimated_objective_position.x + dx,
                 self.estimated_objective_position.y + dy
@@ -213,21 +191,16 @@ class Phineas(Navigator2D):
         self.curr_observations.clear()
         return self.use_sensor(False)
 
-    # ---------------------------------------------------
+    # ***
     # OBSERVAÇÃO
     # ---------------------------------------------------
     def observation(self, obs: Observation):
-        """Processa observações do ambiente"""
-
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return
-
         if obs.type == ObservationType.ACCEPTED:
             reward = obs.payload.reward
             self.register_reward(reward)
-
             _last_attempted_action = self.base_attributes.last_attempted_action
-
             if _last_attempted_action:
                 if _last_attempted_action.name == "move":
                     direction = _last_attempted_action.params.get("direction")
@@ -256,8 +229,6 @@ class Phineas(Navigator2D):
                         self.base_attributes.carrying = True
                         self.ep.total_food_collected += 1
                     elif self.problem == "lighthouse":
-                        # No lighthouse, pick é o objetivo - NÃO chama end_episode aqui
-                        # O ambiente enviará Observation.TERMINATE
                         log().vprint(f"{self.name}: Chegou ao objetivo")
 
                 elif _last_attempted_action.name == "drop":
@@ -272,12 +243,12 @@ class Phineas(Navigator2D):
             self.register_reward(obs.payload.reward)
 
         elif obs.type == ObservationType.TERMINATE:
-            """CRÍTICO: Recebeu sinal para terminar episódio"""
+            """recebeu sinal para terminar episódio"""
             reward = obs.payload.reward
             if reward != 0.0:   # not a simulation shutdown
                 self.register_reward(reward)
 
-            # Determina sucesso baseado no problema
+            #Determina sucesso baseado no problema
             if self.problem == "foraging":
                 success = self.ep.total_food_delivered > 0
             elif self.problem == "lighthouse":
@@ -285,16 +256,15 @@ class Phineas(Navigator2D):
             else:
                 success = False
 
-            # Muda status para TERMINATED
+            #mudar status terminated
             self.status = AgentStatus.TERMINATED
             self.end_episode(success=success)
 
             log().print(f"{self.name}: Recebeu TERMINATE. Episódio finalizado.")
 
-    # ---------------------------------------------------
+    # ***
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
-    # ---------------------------------------------------
-
+    # ***
     def _navigate_towards_target(self, target: Optional[Position], valid_moves: list) -> Direction:
         #andar para alvo
         if not target or not valid_moves:
@@ -352,27 +322,49 @@ class Phineas(Navigator2D):
         else:
             return f"Pos:{self._position.x},{self._position.y}"
 
-    def _learn(self, current_state: str):#atualizar q-table
+    def _learn(self, current_state: str):
         if not self.last_state or not self.last_action:
             return
         old_q = self.q_table.get((self.last_state, self.last_action), 0.0)
-        # Recompensa intrinseca*************************************************
-        exploration_bonus = 0.5 / (self.visit_counts.get(current_state, 0) + 1)
-        total_reward = self.ep.last_extrinsic_reward + exploration_bonus
-        #melhor Q do próximo estado
+
+        #Recompensa environment -
+        r_extrinsic = self.ep.last_extrinsic_reward
+
+        #Bónus de curiosidade
+        r_exploration = 0.5 / (self.visit_counts.get(current_state, 0) + 1)
+
+        #bonus proximidade ao lighthouse para esse problema
+        r_shaping = 0.0
+        if self.problem == "lighthouse" and self.estimated_objective_position:
+            diff_x = self.estimated_objective_position.x - self._position.x
+            diff_y = self.estimated_objective_position.y - self._position.y
+            move_str = self.last_action  # ex: "(0, 1)" ou "Direction.DOWN"
+            if "RIGHT" in move_str and diff_x > 0:
+                r_shaping += 2.0
+            elif "LEFT" in move_str and diff_x < 0:
+                r_shaping += 2.0
+            elif "DOWN" in move_str and diff_y > 0:
+                r_shaping += 2.0
+            elif "UP" in move_str and diff_y < 0:
+                r_shaping += 2.0
+            else:
+                r_shaping -= 0.2  # Pequena penalização por se afastar
+
+        total_reward = r_extrinsic + r_exploration + r_shaping #total
+        #atualizar tabela cfr Bellman
         max_next_q = 0.0
         for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
             q = self.q_table.get((current_state, str(move)), 0.0)
             max_next_q = max(max_next_q, q)
-        #atualização Q-learning
+
         new_q = old_q + self.ep.learning_rate * (
                 total_reward + self.ep.discount_factor * max_next_q - old_q
         )
         self.q_table[(self.last_state, self.last_action)] = new_q
 
-    # ---------------------------------------------------
+    # ***
     # ACT
-    # ---------------------------------------------------
+    # ----
     def act(self) -> Action:
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return self.action.wait()
@@ -427,39 +419,7 @@ class Phineas(Navigator2D):
                 final_dir = self._choose_q_learning_move(valid_moves)
 
         elif self.problem == "lighthouse": #aproximar-se do objetivo
-            # Opção A: Usa direção do sensor se disponível
-            obs_dir = self.curr_observations.get(ObservationType.DIRECTION)
-            if obs_dir and obs_dir.payload:
-                x_dir, y_dir = obs_dir.payload.direction
-                preferred_dirs = []
-                # PRIORIDADE: Movimento que vai na direção do farol
-                if x_dir in valid_moves:
-                    preferred_dirs.append(x_dir)
-                if y_dir in valid_moves:
-                    preferred_dirs.append(y_dir)
-                if preferred_dirs:
-                    # Escolhe uma das direções preferidas
-                    final_dir = random.choice(preferred_dirs)
-                else:
-                    # Se não pode ir nas direções preferidas, tenta aproximar-se
-                    if self.estimated_objective_position:
-                        final_dir = self._navigate_towards_target(self.estimated_objective_position, valid_moves)
-                    else:
-                        # Fallback: Q-learning
-                        final_dir = self._choose_q_learning_move(valid_moves)
-            else:
-                # Sem direção do sensor
-                if self.estimated_objective_position:
-                    # Usa estimativa de posição
-                    final_dir = self._navigate_towards_target(self.estimated_objective_position, valid_moves)
-                else:
-                    # Fallback: Q-learning
-                    final_dir = self._choose_q_learning_move(valid_moves)
-
-        else:
-            #outros problemas: Q-learning genérico
             final_dir = self._choose_q_learning_move(valid_moves)
-
         #Final verification
         if not final_dir or final_dir not in valid_moves:
             final_dir = random.choice(valid_moves)
@@ -474,16 +434,15 @@ class Phineas(Navigator2D):
         self.base_attributes.last_attempted_action = act
         return act
 
-    # ---------------------------------------------------
-    # PERSISTÊNCIA
-    # ---------------------------------------------------
+    # ****
+    # KNOWLEDGE
     def save_knowledge(self):
         if self.mode != "LEARNING":
             return
         
         log().vprint("saving knowledge")
         try:
-            # 1. Dados Base (Comuns a todos os problemas)
+            # dados comuns aos problemas
             data = {
                 'q_table': self.q_table,
                 'visit_counts': self.visit_counts,
@@ -494,53 +453,44 @@ class Phineas(Navigator2D):
                 'problem_type': self.problem  # Ajuda a validar se o save é compatível
             }
 
-            # 2. Dados Espaciais e Estatísticos (Salva apenas se existirem/forem relevantes)
-
-            # Foraging: Ninho e Comida
+            #foraging: Ninho e Comida
             if self.known_nest_position:
                 data['known_nest'] = (self.known_nest_position.x, self.known_nest_position.y)
 
             data['total_food_collected'] = getattr(self, 'total_food_collected', 0)
             data['total_food_delivered'] = getattr(self, 'total_food_delivered', 0)
 
-            # Lighthouse: Objetivo Estimado
+            #lighthouse: Objetivo Estimado
             if self.estimated_objective_position:
                 data['estimated_objective'] = (self.estimated_objective_position.x, self.estimated_objective_position.y)
 
-            # Escrita no disco
+            #escrita no disco
             with open(self._KB_FILE, "wb") as f:
                 pickle.dump(data, f)
         except Exception:
             pass
 
     def load_knowledge(self, file=None):
-        #if not file is None:    #load arbitrary kb
-        #    return
-
         if os.path.exists(self._KB_FILE):
             try:
                 with open(self._KB_FILE, "rb") as f:
                     data = pickle.load(f)
-
-                # Validação simples (opcional): Verifica se o save é do mesmo problema
-                # if data.get('problem_type') != self.problem: return
-
-                # 1. Restaura Cérebro
+                #brain
                 self.q_table = data.get('q_table', {})
                 self.visit_counts = data.get('visit_counts', {})
 
-                # 2. Restaura Progresso (apenas se estivermos a aprender)
+                #progress
                 if self.mode == "LEARNING":
                     self.ep.epsilon = data.get('epsilon', self.ep.epsilon)
                     self.ep.current = data.get('current_episode', 0)
                 else:
                     self.ep.current = 0
 
-                # 3. Restaura Estatísticas
+                #statistics
                 self.ep.total_food_collected = data.get('total_food_collected', 0)
                 self.ep.total_food_delivered = data.get('total_food_delivered', 0)
 
-                # 4. Restaura Memória Espacial (Funciona para ambos os problemas)
+                #
                 nest_pos = data.get('known_nest')
                 if nest_pos:
                     self.known_nest_position = Position(*nest_pos)
