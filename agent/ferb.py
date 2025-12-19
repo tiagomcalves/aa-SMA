@@ -45,7 +45,7 @@ class Ferb(Navigator2D):
             accepted_action = obs.payload.action.name
 
             if accepted_action == "move":
-                direction = accepted_action.params.get("direction")
+                direction = obs.payload.action.params.get("direction")
                 if direction:
                     self._position = self._position + direction
                     # Guarda histórico de posições
