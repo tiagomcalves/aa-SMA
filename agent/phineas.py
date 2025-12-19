@@ -340,15 +340,15 @@ class Phineas(Navigator2D):
             diff_y = self.estimated_objective_position.y - self._position.y
             move_str = self.last_action  # ex: "(0, 1)" ou "Direction.DOWN"
             if "RIGHT" in move_str and diff_x > 0:
-                r_shaping += 0.1
+                r_shaping += 2.0
             elif "LEFT" in move_str and diff_x < 0:
-                r_shaping += 0.1
+                r_shaping += 2.0
             elif "DOWN" in move_str and diff_y > 0:
-                r_shaping += 0.1
+                r_shaping += 2.0
             elif "UP" in move_str and diff_y < 0:
-                r_shaping += 0.1
+                r_shaping += 2.0
             else:
-                r_shaping -= 0.05  # Pequena penalização por se afastar
+                r_shaping -= 0.2  # Pequena penalização por se afastar
 
         total_reward = r_extrinsic + r_exploration + r_shaping #total
         #atualizar tabela cfr Bellman
