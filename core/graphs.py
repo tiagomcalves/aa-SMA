@@ -161,11 +161,25 @@ class PickleGraphLoader:
                     self.agent_line[agent_name]["rewards"] = data.get('total_rewards')
                     self.agent_line[agent_name]["steps"] = data.get('total_steps')
 
+
             except FileNotFoundError:
                 print(f"{path}: file not found")
             except Exception as e:
                 print(f"{path}: error - {e}")
 
+
+    def _calculate_rolling_avr(self, data):
+        _window = 3
+        print("data len:", len(data))
+        moving_avg = np.convolve(
+            data,
+            np.ones(_window) / _window,
+            mode="valid"
+        )
+        print("wndw:", _window)
+        print("data input:", data)
+        print("moving avr:", moving_avg)
+        return range(_window, self.num_episodes + 1), moving_avg
 
 
     def show_graphs(self):
@@ -191,6 +205,15 @@ class PickleGraphLoader:
                 journey_from_zero = [0.0]
                 journey_from_zero.extend(self.agent_line[agent][dataset])
                 ax.plot(season_range, journey_from_zero, label=agent, marker='o')
+
+                if dataset == "rewards":
+                    avr_range, rolling_avr = self._calculate_rolling_avr(self.agent_line[agent][dataset])
+                    print("range:", avr_range)
+                    print("range len:", len(avr_range))
+                    print("rolling arv", rolling_avr)
+                    print("rolling arv len:", len(rolling_avr))
+                    ax.plot(avr_range, rolling_avr, label=f"{agent}(rolling avr)", linestyle='-')
+
 
                 for xi, yi in zip(season_range, journey_from_zero):
                     ax.annotate(f"{round(yi):d}", # floating-point decimal removal
