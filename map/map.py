@@ -124,6 +124,12 @@ class Map:
                 results[key] = data
         return results
 
+    def find_ent_pos(self, ent: MapEntity):
+        for pos, ent in self._map_cells.items():
+            if ent.name.upper() == "OBJECTIVE":
+                return pos
+        return None
+
     def remove_entity(self, pos: Position):
         """ Remove fisicamente a entidade da grelha (ex: comida comida). """
         if pos in self._map_cells:

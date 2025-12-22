@@ -28,6 +28,10 @@ class Environment:
         self._map = Map(problem, data["map"], self)
         self._agent_data = {}
 
+        _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
+        _lighthouse_ent = next(iter(_lighthouse_ent))
+        self._lighthouse_position : Optional[Position] = self._map.find_ent_pos(_lighthouse_ent)
+
     def register_handler(self, request_type: str):
         handler_cls = HANDLER_REGISTRY.get(request_type)
         if handler_cls is None:
@@ -59,13 +63,13 @@ class Environment:
         new_env._map._max_y = self._map._max_y # same
         new_env._map._boundaries = copy.deepcopy(self._map._boundaries) #deepcopy because its a Position
         new_env._map.position_visits = copy.deepcopy(self._map.position_visits)
+        new_env._lighthouse_position = self._lighthouse_position
 
         return new_env
 
     @staticmethod
     def setup_agent(name: str, data: dict) -> AgentData:
         agent_data = AgentData(data["char"], name, Position(*data["starting_position"]), 0.0)
-        #agent_data.carrying = None
         return agent_data
 
     def register_agents(self, agents_dict: dict[Agent, AgentData]) -> None:
@@ -160,12 +164,10 @@ class Environment:
         if tile and tile is BOUNDARIES_TILE:
             # self.send_observation(agent, Observation.denied(action, REWARD.OUT_OF_BOUNDS))
             self.send_observation(agent, Observation.response(REWARD.OUT_OF_BOUNDS))
-            # print("DONT GO OUTOFBOUNDS")
             return
         elif tile and tile.collideable:
             # self.send_observation(agent, Observation.denied(action, REWARD.BUMP_COLLIDEABLE))
             self.send_observation(agent, Observation.response(REWARD.BUMP_COLLIDEABLE))
-            # print("DONT GO AGAINST WALL")
             return
 
         # 2. Verifica Colisão com Agentes
@@ -180,8 +182,18 @@ class Environment:
         self.move_agent(agent, target_pos)
 
         if tile is None:
-            # if problem == "lighthouse":
+            if self.problem_type == "lighthouse":
             #     calculate reward based on direction
+                new_distance_evaluation = self._get_distance_to_objective(current_pos, target_pos)
+
+                if new_distance_evaluation == -1 or new_distance_evaluation == 0:
+                    self.send_observation(agent, Observation.response(REWARD.MOVED, True))
+                    return
+                
+                if new_distance_evaluation == 1:
+                    self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                    return
+
             self.send_observation(agent, Observation.response(REWARD.MOVED, True))
             return
 
@@ -231,6 +243,20 @@ class Environment:
             self.send_observation(agent, Observation.terminate(action, tile.reward))
             return
 
+    def _get_distance_to_objective(self, current_pos, target_pos):
+        old_pos_dist = self._calculate_distance_to_objective(current_pos)
+        new_pos_dist = self._calculate_distance_to_objective(target_pos)
+
+        if old_pos_dist < new_pos_dist:
+            return -1
+        elif old_pos_dist > new_pos_dist:
+            return 1
+        return 0
+
+    def _calculate_distance_to_objective(self, position):
+        goal_x = self._lighthouse_position.x
+        goal_y = self._lighthouse_position.y
+        return abs(position.x - goal_x) + abs(position.y - goal_y)
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}

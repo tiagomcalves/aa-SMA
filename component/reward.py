@@ -6,6 +6,7 @@ class REWARD(float, Enum):
     BUMP_COLLIDEABLE = -0.5
     BUMP_AGENT = -0.2
     STAND_STILL = -2.0
-    MOVED = -1.0
+    MOVED = -0.5
+    MOVED_CLOSER = 0.5
     REACH_OBJECTIVE = 100.0
     DENY_PICK = -0.1

@@ -2,7 +2,7 @@
   "environment": {
     "sensor_handlers": ["surroundings", "directions"],
     "map": {
-      "file": "basic",
+      "file": "map_example",
       "boundaries": [10, 10],
       "spawns": [[2, 2]],
       "spawn_choice": 0,

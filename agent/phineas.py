@@ -97,6 +97,7 @@ class Phineas(Navigator2D):
                 learning_rate=self.ep.learning_rate,
                 discount_factor=self.ep.discount_factor,
                 epsilon=self.ep.epsilon)
+            print("Episode", self.ep.current, " current qtable size:", len(self.q_table))
         else:
             super().start_episode()
 
@@ -321,20 +322,20 @@ class Phineas(Navigator2D):
 
         #bonus proximidade ao lighthouse para esse problema
         r_shaping = 0.0
-        if self.problem == "lighthouse" and self.estimated_objective_position:
-            diff_x = self.estimated_objective_position.x - self._position.x
-            diff_y = self.estimated_objective_position.y - self._position.y
-            move_str = self.last_action  # ex: "(0, 1)" ou "Direction.DOWN"
-            if "RIGHT" in move_str and diff_x > 0:
-                r_shaping += 2.0
-            elif "LEFT" in move_str and diff_x < 0:
-                r_shaping += 2.0
-            elif "DOWN" in move_str and diff_y > 0:
-                r_shaping += 2.0
-            elif "UP" in move_str and diff_y < 0:
-                r_shaping += 2.0
-            else:
-                r_shaping -= 0.2  # Pequena penalização por se afastar
+        # if self.problem == "lighthouse" and self.estimated_objective_position:
+        #     diff_x = self.estimated_objective_position.x - self._position.x
+        #     diff_y = self.estimated_objective_position.y - self._position.y
+        #     move_str = self.last_action  # ex: "(0, 1)" ou "Direction.DOWN"
+        #     if "RIGHT" in move_str and diff_x > 0:
+        #         r_shaping += 2.0
+        #     elif "LEFT" in move_str and diff_x < 0:
+        #         r_shaping += 2.0
+        #     elif "DOWN" in move_str and diff_y > 0:
+        #         r_shaping += 2.0
+        #     elif "UP" in move_str and diff_y < 0:
+        #         r_shaping += 2.0
+        #     else:
+        #         r_shaping -= 0.2  # Pequena penalização por se afastar
 
         total_reward = r_extrinsic + r_exploration + r_shaping #total
         #atualizar tabela cfr Bellman
@@ -360,29 +361,6 @@ class Phineas(Navigator2D):
         #Atualiza sensores
         self.use_sensor(False)
 
-        # Ações imediatas - pick ou drop
-        # obs_loc = self.curr_observations.get(ObservationType.LOCATION)
-        # if obs_loc:
-        #     tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
-        #
-        #     _carrying = self.base_attributes.carrying
-        #     _last_attempted_action = self.base_attributes.last_attempted_action
-        #
-        #     if self.problem == "foraging":
-        #         if not _carrying and tile in ["FOOD", "RESOURCE"]:
-        #             act = self.action.pick()
-        #             _last_attempted_action = act
-        #             return act
-        #         if _carrying and tile == "NEST":
-        #             act = self.action.drop()
-        #             _last_attempted_action = act
-        #             return act
-        #     elif self.problem == "lighthouse" and tile in ["OBJECTIVE", "O", "@"]:
-        #         log().print(f"agent {self.name} trying to pick OBJECTIVE")
-        #         act = self.action.pick()
-        #         _last_attempted_action = act
-        #         return act
-
         #Obtém movimentos válidos
         valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
         if not valid_moves:
@@ -392,16 +370,16 @@ class Phineas(Navigator2D):
         final_dir = None
 
         #MODO PÂNICO (anti-loop)
-        if _is_oscillating(self.base_attributes.pos_history) or self.base_attributes.stuck_counter > 3:
-            self.base_attributes.panic_mode = 3
-            self.base_attributes.stuck_counter = 0
+        # if _is_oscillating(self.base_attributes.pos_history) or self.base_attributes.stuck_counter > 3:
+        #     self.base_attributes.panic_mode = 3
+        #     self.base_attributes.stuck_counter = 0
 
-        if self.base_attributes.panic_mode > 0:
-            self.base_attributes.panic_mode -= 1
-            final_dir = random.choice(valid_moves)
+        # if self.base_attributes.panic_mode > 0:
+        #     self.base_attributes.panic_mode -= 1
+        #     final_dir = random.choice(valid_moves)
 
         #LÓGICA ESPECÍFICA POR PROBLEMA
-        elif self.problem == "foraging":
+        if self.problem == "foraging":
             if self.base_attributes.carrying:
                 # Volta ao ninho
                 final_dir = self._navigate_towards_target(self.known_nest_position, valid_moves)
