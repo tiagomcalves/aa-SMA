@@ -179,7 +179,7 @@ def _get_valid_moves(surroundings: Observation) -> list:
     valid_moves = []
 
     if surroundings:
-        bad_tiles = []
+        bad_tiles = []  #deactivated
         cells = surroundings.payload.cells
         for direction, content in cells.items():
             is_wall = content in bad_tiles

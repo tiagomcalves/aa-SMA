@@ -119,7 +119,6 @@ class Navigator2D(Agent):
         pass
 
     def register_reward(self, reward: float):
-        print("calling register_reward, step", self.ep.steps)
         self.ep.reward += reward
         self.ep.steps += 1
         self.ep.last_extrinsic_reward = reward

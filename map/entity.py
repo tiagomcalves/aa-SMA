@@ -38,9 +38,7 @@ class AgentData:
     pos: Position
     score: float = 0.0
 
-    # Adicionado para o problema de Foraging (Recoleção).
-    # Se None = Mãos vazias. Se Float = Valor do recurso que carrega.
-    carrying: Optional[float] = None
+    carrying: Optional[float] = None                #Foraging: None = Not carrying/ Float = carrying item value
 
 
 class EntityPosition:

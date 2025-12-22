@@ -170,15 +170,15 @@ class PickleGraphLoader:
 
     def _calculate_rolling_avr(self, data):
         _window = 3
-        print("data len:", len(data))
+        # print("data len:", len(data))
         moving_avg = np.convolve(
             data,
             np.ones(_window) / _window,
             mode="valid"
         )
-        print("wndw:", _window)
-        print("data input:", data)
-        print("moving avr:", moving_avg)
+        # print("wndw:", _window)
+        # print("data input:", data)
+        # print("moving avr:", moving_avg)
         return range(_window, self.num_episodes + 1), moving_avg
 
 
@@ -208,10 +208,10 @@ class PickleGraphLoader:
 
                 if dataset == "rewards":
                     avr_range, rolling_avr = self._calculate_rolling_avr(self.agent_line[agent][dataset])
-                    print("range:", avr_range)
-                    print("range len:", len(avr_range))
-                    print("rolling arv", rolling_avr)
-                    print("rolling arv len:", len(rolling_avr))
+                    # print("range:", avr_range)
+                    # print("range len:", len(avr_range))
+                    # print("rolling arv", rolling_avr)
+                    # print("rolling arv len:", len(rolling_avr))
                     ax.plot(avr_range, rolling_avr, label=f"{agent}(rolling avr)", linestyle='-')
 
 
@@ -266,7 +266,7 @@ class HeatmapLoader:
             raise ValueError("No data provided.")
 
         self.shape = (max_x, max_y)
-        print(data)
+        # print(data)
         # Initialize array
         heatmap = np.zeros(self.shape)
         for (x, y), value in data.items():
@@ -289,7 +289,7 @@ class HeatmapLoader:
             norm=LogNorm(vmin=1, vmax=masked.max()),
             interpolation="nearest"
         )
-
+        
         plt.colorbar(label="Value (log scale)")
         plt.title(title)
         plt.xlabel("X")
@@ -319,7 +319,7 @@ class HeatmapLoader:
         if match:
             max_x = int(match.group(1))
             max_y = int(match.group(2))
-            print("max_x:", max_x, "max_y:", max_y)
+            # print("max_x:", max_x, "max_y:", max_y)
             self.load_from_dict(heatmap_data, max_x, max_y)
         else:
             print("Could not extract max_x and max_y")
