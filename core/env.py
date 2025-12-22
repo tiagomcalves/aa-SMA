@@ -1,6 +1,6 @@
 import copy
 import random
-from typing import Optional
+from typing import Optional, cast
 
 from abstract.agent import Agent
 from abstract.nav2d import Navigator2D
@@ -11,7 +11,7 @@ from component.reward import REWARD
 from component.sensor.registry import HANDLER_REGISTRY
 from core.logger import log
 from core.renderer.r_handle import Renderer
-from map.entity import AgentData, MapEntity
+from map.entity import AgentData, MapEntity, BOUNDARIES_TILE
 from map.map import Map
 from map.position import Position
 
@@ -50,7 +50,7 @@ class Environment:
         # deepcopy of the Map, fresh map
         new_env._map = Map.__new__(Map)
         new_env._map._env = new_env
-        new_env._map._default_empty = copy.deepcopy(self._map._default_empty)
+        new_env._map._boundaries_tile = BOUNDARIES_TILE
         new_env._map._char_entity_mapping = self._map._char_entity_mapping  # immutable data so no need to deepcopy
         new_env._map._boundaries = copy.deepcopy(self._map._boundaries)
         new_env._map._map_cells = copy.deepcopy(self._map._map_cells)
@@ -58,17 +58,21 @@ class Environment:
         new_env._map._max_x = self._map._max_x # just an int
         new_env._map._max_y = self._map._max_y # same
         new_env._map._boundaries = copy.deepcopy(self._map._boundaries) #deepcopy because its a Position
+        new_env._map.position_visits = copy.deepcopy(self._map.position_visits)
 
         return new_env
 
     @staticmethod
     def setup_agent(name: str, data: dict) -> AgentData:
         agent_data = AgentData(data["char"], name, Position(*data["starting_position"]), 0.0)
-        agent_data.carrying = None
+        #agent_data.carrying = None
         return agent_data
 
     def register_agents(self, agents_dict: dict[Agent, AgentData]) -> None:
         self._agent_data = agents_dict
+        for agent, data in self._agent_data.items():
+            print("registering agent", agent, "position")
+            self._map.add_count_to_position(data.pos)
 
     def remove_agent(self, agent: Agent):
         log().print(f"Env: remove agent {agent.name}")
@@ -93,17 +97,17 @@ class Environment:
 
                     agent_here = any(adata.pos == pos for adata in self._agent_data.values())
 
-                    if tile.name == "Empty" and not tile.collideable and not agent_here:
+                    if not tile and not agent_here:
                         self._map.add_entity(pos, "FOOD")
                         break
 
     def act(self, action: Action, agent: Agent):
         if action.name == "move":
             self.validate_move(action)
-        elif action.name == "pick":
-            self.agent_pick(action)
-        elif action.name == "drop":
-            self.agent_drop(action)
+        # elif action.name == "pick":
+        #     self.agent_pick(action)
+        # elif action.name == "drop":
+        #     self.agent_drop(action)
         else:
             self.send_observation(agent, Observation.denied(action, 0.0))
 
@@ -115,7 +119,7 @@ class Environment:
         return positions
 
     def get_map_size(self) -> tuple[int,int]:
-        return self._map.get_size()
+        return self._map.get_max_x(), self._map.get_max_y()
 
     def render(self):
         positions = self._pack_agents_positions()
@@ -135,92 +139,98 @@ class Environment:
         if data: return data.name.upper()
         return "EMPTY"
 
+    def move_agent(self, agent, pos):
+        agent_data = self._agent_data.get(agent)
+        agent_data.pos = pos
+        self._map.add_count_to_position(pos)
+
     def validate_move(self, action: Action):
         agent = action.agent
         direction = action.params.get("direction")
 
-        if direction == Direction.NONE:
-            self.send_observation(agent, Observation.denied(action, REWARD.STAND_STILL))
-            return
+        # if direction == Direction.NONE:
+        #     self.send_observation(agent, Observation.denied(action, REWARD.STAND_STILL))
+        #     return
 
         current_pos = self._agent_data[agent].pos
         target_pos = current_pos + direction
         tile = self.get_tile_data(target_pos)
 
         # 1. Verifica Limites e Paredes
-        if tile is None:
-            self.send_observation(agent, Observation.denied(action, REWARD.OUT_OF_BOUNDS))
+        if tile and tile is BOUNDARIES_TILE:
+            # self.send_observation(agent, Observation.denied(action, REWARD.OUT_OF_BOUNDS))
+            self.send_observation(agent, Observation.response(REWARD.OUT_OF_BOUNDS))
+            # print("DONT GO OUTOFBOUNDS")
             return
-        elif tile.collideable:
-            self.send_observation(agent, Observation.denied(action, REWARD.BUMP_COLLIDEABLE))
+        elif tile and tile.collideable:
+            # self.send_observation(agent, Observation.denied(action, REWARD.BUMP_COLLIDEABLE))
+            self.send_observation(agent, Observation.response(REWARD.BUMP_COLLIDEABLE))
+            # print("DONT GO AGAINST WALL")
             return
 
         # 2. Verifica Colisão com Agentes
         for o_agent, o_data in self._agent_data.items():
             if o_agent is agent: continue
             if o_data.pos == target_pos:
-                self.send_observation(agent, Observation.denied(action, REWARD.BUMP_AGENT))
+                # self.send_observation(agent, Observation.denied(action, REWARD.BUMP_AGENT))
+                self.send_observation(agent, Observation.response(REWARD.BUMP_AGENT))
                 return
 
         # 3. MOVIMENTO ACEITE
-        agent_data = self._agent_data.get(agent)
-        agent_data.pos = target_pos
+        self.move_agent(agent, target_pos)
+
+        if tile is None:
+            # if problem == "lighthouse":
+            #     calculate reward based on direction
+            self.send_observation(agent, Observation.response(REWARD.MOVED, True))
+            return
 
         # --- AUTO-PICKUP  ---
         tile_name = tile.name.upper()
 
-        if tile_name in ["FOOD", "RESOURCE", "GARBAGE"] and agent_data.carrying is None:
+        agent_data = self._agent_data.get(agent)
+        if tile_name in ["FOOD", "RESOURCE", "GARBAGE"]:
+            if agent_data.carrying is not None:
+                self.send_observation(agent, Observation.response(REWARD.MOVED, True))
+                return
+
             agent_data.carrying = 1.0
+
+            navigator = cast(Navigator2D, agent)
+            navigator.base_attributes.carrying = True
+            navigator.ep.total_food_collected += 1
+
             self._map.remove_entity(target_pos)  # Remove visualmente AGORA
             log().print(f">>> {agent.name} AUTO-PICKED {tile_name} at {target_pos}")
-            self.send_observation(agent, Observation.accepted(action, 50.0))
+            #self.send_observation(agent, Observation.accepted(action, 50.0))
+            self.send_observation(agent, Observation.response(50.0, True))
             return
+
 
         # --- AUTO-DROP ---
-        if tile_name == "NEST" and agent_data.carrying is not None:
+        if tile_name == "NEST":
+            if agent_data.carrying is None:
+                self.send_observation(agent, Observation.response(REWARD.MOVED, True))
+                return
+
             reward = 200.0 * agent_data.carrying
             agent_data.carrying = None
+
+            navigator = cast(Navigator2D, agent)
+            navigator.ep.total_food_delivered += 1
+            navigator.ep.successful_returns += 1
+
             log().print(f">>> {action.agent.name} AUTO-DEPOSITED at NEST!")
-            self.send_observation(agent, Observation.accepted(action, reward))
+            #self.send_observation(agent, Observation.accepted(action, reward))
+            self.send_observation(agent, Observation.response(reward, True))
             return
 
-        # Movimento normal
-        self.send_observation(agent, Observation.accepted(action, REWARD.MOVED))
-
-    def agent_pick(self, action: Action):
-        # Fallback para pick manual
-        agent_data = self._agent_data[action.agent]
-        tile = self.get_tile_data(agent_data.pos)
-
-        if tile is None:
-            self.send_observation(action.agent, Observation.none())
+        # --- Reach Lighhouse ---
+        if tile_name == "OBJECTIVE":
+            log().print(f">>> {action.agent.name} REACHED LIGHTHOUSE!")
+            self.send_observation(agent, Observation.terminate(action, tile.reward))
             return
 
-        if tile.name.upper() == "OBJECTIVE":
-            self.send_observation(action.agent, Observation.terminate(action, tile.reward))
-            return
-
-        if tile.name.upper() in ["FOOD", "RESOURCE", "GARBAGE"]:
-            if agent_data.carrying is None:
-                agent_data.carrying = 1.0
-                self._map.remove_entity(agent_data.pos)
-                self.send_observation(action.agent, Observation.accepted(action, tile.reward))
-            else:
-                self.send_observation(action.agent, Observation.denied(action, REWARD.DENY_PICK))
-            return
-
-        self.send_observation(action.agent, Observation.denied(action, REWARD.DENY_PICK))
-
-    def agent_drop(self, action: Action):
-        agent_data = self._agent_data[action.agent]
-        tile = self.get_tile_data(agent_data.pos)
-
-        if agent_data.carrying is not None and tile.name.upper() == "NEST":
-            reward = 100.0
-            agent_data.carrying = None
-            self.send_observation(action.agent, Observation.accepted(action, reward))
-        else:
-            self.send_observation(action.agent, Observation.denied(action, -0.1))
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}
@@ -278,3 +288,9 @@ class Environment:
 
     def get_entities_by_type(self, entity_name: str) -> dict:
         return self._map.get_entity_by_name(entity_name)
+
+    def retrieve_visited_positions(self):
+        visited_pos = {}
+        for pos, count in self._map.position_visits.items():
+            visited_pos[(pos.x,pos.y)] = count
+        return visited_pos

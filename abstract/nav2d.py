@@ -95,23 +95,20 @@ class Navigator2D(Agent):
     def update_position(self, pos: Position):
         self._position = pos
 
-    #@abstractmethod
-    #def move(self, direction: Direction) -> None:
-    #    pass
-
     def get_char(self) -> str:
         return self._char
 
-    def use_sensor(self, post_action: bool) -> None:
+    def use_sensor(self, post_action: bool = False) -> None:
+        self.curr_observations.clear()
         if post_action:
             #self.state.update_sensor_data(post_action, self._sensor.get_info(self))
             return
 
         curr_obs_bundle = self._sensor.get_info(self)
         #self.state.update_sensor_data(post_action, curr_obs_bundle)
-        self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings} if curr_obs_bundle.surroundings is not None else {})
-        self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions} if curr_obs_bundle.directions is not None else {})
-        self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location} if curr_obs_bundle.location is not None else {})
+        self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings})
+        self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions})
+        self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location})
 
     @abstractmethod
     def observation(self, obs: Observation):
@@ -122,6 +119,7 @@ class Navigator2D(Agent):
         pass
 
     def register_reward(self, reward: float):
+        print("calling register_reward, step", self.ep.steps)
         self.ep.reward += reward
         self.ep.steps += 1
         self.ep.last_extrinsic_reward = reward

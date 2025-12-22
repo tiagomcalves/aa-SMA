@@ -55,18 +55,12 @@ class Ferb(Navigator2D):
             self.base_attributes.stuck_counter = 0
 
 
-
-    def _update_sensor(self, post_action: bool):
-        self.curr_observations.clear()
-        return self.use_sensor(post_action)
-
-
     def act(self) -> Action:
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return self.action.wait()
 
         # Atualiza sensores
         if not self.has_observations():
-            self._update_sensor(False)
+            self.use_sensor(False)
 
         return self.policy.act(self.name, self.curr_observations, self.base_attributes, self.action)

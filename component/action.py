@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum, auto, IntEnum
 from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ class Action:
         #self.agent.state.update_action_taken(self)
         pass
 
-class ActionResponse(Enum):
+class ActionResponse(IntEnum):
     def _generate_next_value_(name, start, count, last_values):
         return count  # count starts at 0
 
