@@ -1,6 +1,6 @@
 {
   "environment": {
-    "sensor_handlers": ["surroundings", "directions", "location"],
+    "sensor_handlers": ["surroundings", "location"],
     "map": {
       "file": "foraging_map",
       "boundaries": [10, 10]

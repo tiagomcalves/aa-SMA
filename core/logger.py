@@ -5,12 +5,13 @@ import json
 from datetime import datetime
 import os
 
+
 class Logger:
     def __init__(self, verbose=False, problem_name="default"):
         self.verbose = verbose
         self.problem_name = problem_name
         self.learning_loggers: Dict[str, LearningLogger] = {}
-        self.test_loggers: Dict[str, TestLogger] = {}
+        # self.test_loggers: Dict[str, TestLogger] = {}
 
         # Cria diretórios para o problema específico
         if self.problem_name:
@@ -318,6 +319,64 @@ class ReportLogger:
         """Salva relatório ao fechar"""
         if self.results:
             self.save_report()
+
+
+class HeatLogger:
+    def __init__(self, timestamp, problem, max_x, max_y):
+        self.problem = problem
+        self.timestamp = timestamp
+        self._results = {}
+        self._max_x = max_x
+        self._max_y = max_y
+
+        # Diretório específico do problema
+        log_dir = f"logs/{problem}/heatmap"
+        os.makedirs(log_dir, exist_ok=True)
+
+        # Ficheiros de output
+        #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.csv_file = f"{log_dir}/{problem}_{max_x}x{max_y}_{timestamp}.csv"
+
+        # Inicializa ficheiros
+        self._init_csv_file()
+
+    @property
+    def get_data(self):
+        return self._results
+
+    @property
+    def max_x(self):
+        return self._max_x
+
+    @property
+    def max_y(self):
+        return self._max_y
+
+
+    def _init_csv_file(self):
+        """Inicializa ficheiro CSV com cabeçalho"""
+        with open(self.csv_file, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'x', 'y', 'count'
+            ])
+
+    def collect(self, visits: dict[tuple[int,int], int]):
+        for k, v in visits.items():
+            self._results[k] = self._results.get(k, 0) + v
+
+    def _save_csv_summary(self):
+        """Salva sumário em CSV"""
+        with open(self.csv_file, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+
+            for pos, count in self._results.items():
+                writer.writerow([pos[0],pos[1], count])
+
+    def close(self):
+        """Salva relatório ao fechar"""
+        if self._results:
+            self._save_csv_summary()
 
 
 # Variável global e função de acesso

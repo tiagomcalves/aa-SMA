@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from enum import auto, Enum
+from enum import auto, Enum, IntEnum
 from typing import Optional
 
 from abstract.utils.action_builder import ActionBuilder
@@ -10,7 +10,7 @@ from component.action import Action
 from component.observation import Observation, ObservationType
 from component.sensor.sensor import Sensor
 
-class AgentStatus(Enum):
+class AgentStatus(IntEnum):
     INITIALIZING = auto()
     RUNNING = auto()
     IDLE = auto()

@@ -41,6 +41,7 @@ class Phineas(Navigator2D):
 
         self.last_state = None
         self.last_action = None
+        self.last_act_moved = False
         
         if self.mode == "LEARNING":
 
@@ -98,6 +99,12 @@ class Phineas(Navigator2D):
                 epsilon=self.ep.epsilon)
         else:
             super().start_episode()
+
+        self.last_state = None
+        self.last_action = None
+        self.last_act_moved = False
+        self._position = Position(0,0)
+
         if self.problem == "lighthouse":
             self.estimated_objective_position = None #reset posicao estimada lighthouse
 
@@ -150,21 +157,15 @@ class Phineas(Navigator2D):
     # ***
     # SENSOR
     # ***
-    def use_sensor(self, post_action: bool) -> None:
-        obs = self._sensor.get_info(self)
+    def use_sensor(self, post_action: bool = False) -> None:
+        super().use_sensor()
+        if self.problem == "lighthouse":
+            self._estimate_objective_position(self.curr_observations[ObservationType.DIRECTION].payload.direction)
 
-        if obs.surroundings:
-            self.curr_observations[ObservationType.SURROUNDINGS] = obs.surroundings
-
-        if obs.directions:
-            self.curr_observations[ObservationType.DIRECTION] = obs.directions
-            if self.problem == "lighthouse" and obs.directions.payload:
-                self._estimate_objective_position(obs.directions.payload.direction)
-        if obs.location:
-            self.curr_observations[ObservationType.LOCATION] = obs.location
-            tile = getattr(obs.location.payload, 'tile', "EMPTY").upper()
-            if tile == "NEST":
-                self.known_nest_position = self._position
+        tile = self.curr_observations[ObservationType.LOCATION].payload.tile
+        if tile.upper() == "NEST":
+            print("Saving next position")
+            self.known_nest_position = self._position
 
         return
 
@@ -187,80 +188,56 @@ class Phineas(Navigator2D):
                 self.estimated_objective_position.y + dy
             )
 
-    def _update_sensor(self):
-        self.curr_observations.clear()
-        return self.use_sensor(False)
-
     # ***
     # OBSERVAÇÃO
     # ---------------------------------------------------
     def observation(self, obs: Observation):
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return
-        if obs.type == ObservationType.ACCEPTED:
-            reward = obs.payload.reward
+
+        reward = obs.payload.reward
+
+        if obs.type == ObservationType.TERMINATE:
+            """recebeu sinal para terminar episódio"""
+            if reward != 0.0:   # not a simulation shutdown
+                self.register_reward(reward)
+                self.last_act_moved = True
+                direction = self.base_attributes.last_attempted_action.params.get("direction")
+                self._position = self._position + direction
+                self.my_estimated_position = self._position
+                self.base_attributes.pos_history.append(self._position)
+
+            success = self.ep.total_food_delivered > 0 or reward > 0.0
+
+            self.status = AgentStatus.TERMINATED
+            self.end_episode(success=success)
+            log().print(f"{self.name}: Recebeu TERMINATE. Episódio finalizado.")
+            return
+
+        if obs.type == ObservationType.RESPONSE:
             self.register_reward(reward)
+
             _last_attempted_action = self.base_attributes.last_attempted_action
+
             if _last_attempted_action:
                 if _last_attempted_action.name == "move":
                     direction = _last_attempted_action.params.get("direction")
-                    if direction:
-                        self._position = self._position + direction
-                        self.my_estimated_position = self._position
-                        self.base_attributes.pos_history.append(self._position)
 
-                        # resetstuck counter se se moveu
-                        self.base_attributes.stuck_counter = 0
+                    if obs.payload.moved:
 
-                    #det automática de pickup/drop (para foraging)
-                    if self.problem == "foraging" and reward >= 40.0:
-                        if not self.base_attributes.carrying:
-                            self.base_attributes.carrying = True
-                            self.ep.total_food_collected += 1
-                            log().vprint(f"{self.name}: Apanhou comida!")
-                        else:
-                            self.base_attributes.carrying = False
-                            self.ep.total_food_delivered += 1
-                            self.ep.successful_returns += 1
-                            log().vprint(f"{self.name}: Entregou comida no ninho!")
+                        if direction:
+                            self._position = self._position + direction
+                            self.my_estimated_position = self._position
+                            self.base_attributes.pos_history.append(self._position)
 
-                elif _last_attempted_action.name == "pick":
-                    if self.problem == "foraging":
-                        self.base_attributes.carrying = True
-                        self.ep.total_food_collected += 1
-                    elif self.problem == "lighthouse":
-                        log().vprint(f"{self.name}: Chegou ao objetivo")
+                            # resetstuck counter se se moveu
+                            self.base_attributes.stuck_counter = 0
+                            self.last_act_moved = True
 
-                elif _last_attempted_action.name == "drop":
-                    if self.problem == "foraging":
-                        self.base_attributes.carrying = False
-                        self.ep.total_food_delivered += 1
-                        self.ep.successful_returns += 1
-                        log().vprint(f"{self.name}: Depositou no ninho!")
+                    else:
+                        self.base_attributes.stuck_counter += 1
+                        self.last_act_moved = False
 
-        elif obs.type == ObservationType.DENIED:
-            self.base_attributes.stuck_counter += 1
-            self.register_reward(obs.payload.reward)
-
-        elif obs.type == ObservationType.TERMINATE:
-            """recebeu sinal para terminar episódio"""
-            reward = obs.payload.reward
-            if reward != 0.0:   # not a simulation shutdown
-                self.register_reward(reward)
-
-            #Determina sucesso baseado no problema
-            if self.problem == "foraging":
-                success = self.ep.total_food_delivered > 0
-            elif self.problem == "lighthouse":
-                success = True if reward > 0.0 else False
-            else:
-                success = False
-
-            #mudar status terminated
-            self.status = AgentStatus.TERMINATED
-            self.end_episode(success=success)
-
-            log().print(f"{self.name}: Recebeu TERMINATE. Episódio finalizado.")
 
     # ***
     # NAVEGAÇÃO - MÉTODOS AUXILIARES
@@ -308,19 +285,28 @@ class Phineas(Navigator2D):
                 best_actions.append(move)
         return random.choice(best_actions) if best_actions else random.choice(valid_moves)
 
+    def format_obs_for_state(self, obstype: ObservationType):
+        if obstype == ObservationType.SURROUNDINGS:
+            _cell = self.curr_observations.get(ObservationType.SURROUNDINGS).payload.cells
+            return f"({_cell[Direction.UP]},{_cell[Direction.DOWN]},{_cell[Direction.LEFT]},{_cell[Direction.RIGHT]})"
+
+        elif obstype == ObservationType.DIRECTION:
+            x_dir, y_dir = self.curr_observations.get(ObservationType.DIRECTION).payload.direction
+            return f"({x_dir},{y_dir}"
+
+        elif obstype == ObservationType.LOCATION:
+            _tile = self.curr_observations.get(ObservationType.LOCATION).payload.tile.upper()
+            return f"<{_tile}>"
+
+        return None
+
     def _get_state_key(self) -> str: #chave de estado para o q-learning
-        if self.problem == "foraging":
-            return f"C:{1 if self.base_attributes.carrying else 0}|Pos:{self._position.x},{self._position.y}"
-        elif self.problem == "lighthouse":
-            # Inclui direção do farol no estado
-            obs_dir = self.curr_observations.get(ObservationType.DIRECTION)
-            if obs_dir and obs_dir.payload:
-                x_dir, y_dir = obs_dir.payload.direction
-                return f"Dir:{x_dir},{y_dir}|Pos:{self._position.x},{self._position.y}"
-            else:
-                return f"Dir:None|Pos:{self._position.x},{self._position.y}"
-        else:
-            return f"Pos:{self._position.x},{self._position.y}"
+        surr = self.format_obs_for_state(ObservationType.SURROUNDINGS)
+        dir = self.format_obs_for_state(ObservationType.DIRECTION)
+        loc = self.format_obs_for_state(ObservationType.LOCATION)
+        carry = {1 if self.base_attributes.carrying else 0}
+        #moved = {1 if self.last_act_moved else 0}
+        return f"{surr},{dir},{loc}|{self._position.x},{self._position.y}|C:{carry}"    # State string
 
     def _learn(self, current_state: str):
         if not self.last_state or not self.last_action:
@@ -362,41 +348,45 @@ class Phineas(Navigator2D):
         )
         self.q_table[(self.last_state, self.last_action)] = new_q
 
+        # print("new qtable entry:", (self.last_state, self.last_action), ":", new_q)
+
     # ***
     # ACT
     # ----
     def act(self) -> Action:
         if self.base_attributes.episode_ended: #se episodio acabou - n se mexe mais
             return self.action.wait()
+
         #Atualiza sensores
-        self._update_sensor()
+        self.use_sensor(False)
 
         # Ações imediatas - pick ou drop
-        obs_loc = self.curr_observations.get(ObservationType.LOCATION)
-        if obs_loc:
-            tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
+        # obs_loc = self.curr_observations.get(ObservationType.LOCATION)
+        # if obs_loc:
+        #     tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
+        #
+        #     _carrying = self.base_attributes.carrying
+        #     _last_attempted_action = self.base_attributes.last_attempted_action
+        #
+        #     if self.problem == "foraging":
+        #         if not _carrying and tile in ["FOOD", "RESOURCE"]:
+        #             act = self.action.pick()
+        #             _last_attempted_action = act
+        #             return act
+        #         if _carrying and tile == "NEST":
+        #             act = self.action.drop()
+        #             _last_attempted_action = act
+        #             return act
+        #     elif self.problem == "lighthouse" and tile in ["OBJECTIVE", "O", "@"]:
+        #         log().print(f"agent {self.name} trying to pick OBJECTIVE")
+        #         act = self.action.pick()
+        #         _last_attempted_action = act
+        #         return act
 
-            _carrying = self.base_attributes.carrying
-            _last_attempted_action = self.base_attributes.last_attempted_action
-
-            if self.problem == "foraging":
-                if not _carrying and tile in ["FOOD", "RESOURCE"]:
-                    act = self.action.pick()
-                    _last_attempted_action = act
-                    return act
-                if _carrying and tile == "NEST":
-                    act = self.action.drop()
-                    _last_attempted_action = act
-                    return act
-            elif self.problem == "lighthouse" and tile in ["OBJECTIVE", "O", "@"]:
-                log().print(f"agent {self.name} trying to pick OBJECTIVE")
-                act = self.action.pick()
-                _last_attempted_action = act
-                return act
         #Obtém movimentos válidos
         valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
         if not valid_moves:
-            act = self.action.wait()
+            act = self.action.wait()    # @tiago: env does not handle wait atm, so nothing happens
             _last_attempted_action = act
             return act
         final_dir = None

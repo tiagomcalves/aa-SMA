@@ -4,7 +4,7 @@ import sys
 import time
 from pathlib import Path
 
-from core.graphs import PickleGraphLoader, SessionGraphLoader
+from core.graphs import PickleGraphLoader, SessionGraphLoader, HeatmapLoader
 from core.renderer.r_handle import Renderer
 from core.sim import Simulator
 from core.module_importer import import_agents
@@ -70,6 +70,21 @@ def main():
                 pickle_graph.show_graphs()
         else:
             print("Learning graphs are not available")
+
+
+    heatmap = HeatmapLoader(timestamp, args.problem)
+    heatmap.load_from_dict(sim.heatmap_log.get_data, sim.heatmap_log.max_x, sim.heatmap_log.max_y)
+
+    if not heatmap is None:
+        while True:
+            answer = input("Show heatmap of simulation? (y/n): ").strip().lower()
+            if answer in ("y", "n"):
+                break
+        if answer == "y":
+            heatmap.draw()
+    else:
+        print("Heatmap not available")
+
 
     session_graph = SessionGraphLoader(timestamp, args.problem)
     if not session_graph is None:

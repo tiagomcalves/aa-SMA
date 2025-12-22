@@ -1,16 +1,23 @@
 from dataclasses import dataclass
+from enum import Enum, auto, IntEnum
 from typing import Optional
 from map.position import Position
+
+class TileType(IntEnum):
+    NONE = auto()
+    EMPTY = auto()
+    BOUNDARIES = auto()
+    COLLIDEABLE = auto()
+    COLLECTABLE = auto()
+    NEST = auto()
 
 
 @dataclass
 class MapEntity:
-    # Estes campos TÊM de corresponder exatamente às chaves no ficheiro entity_schema.ndjson
     char: str
     name: str
     cost: float  # O erro dava-se aqui (falta de cost)
     collideable: bool
-    kill_zone: bool  # Necessário pelo schema
     active: bool  # Necessário pelo schema
     draw: bool
 
@@ -49,3 +56,8 @@ class EntityPosition:
 
     def get_steps(self) -> int:
         return self._step_count
+
+BOUNDARIES_TILE = MapEntity(
+            char=".", name="Boundaries", cost=0.0, collideable=True,
+             active=True, draw=False
+        )

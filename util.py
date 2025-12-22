@@ -1,7 +1,7 @@
 # main.py
 import argparse
 from pathlib import Path
-from core.graphs import PickleGraphLoader, SessionGraphLoader
+from core.graphs import PickleGraphLoader, SessionGraphLoader, HeatmapLoader
 from core.logger import Logger
 
 
@@ -48,6 +48,18 @@ def main():
         else:
             print("Graphs are not available")
 
+        heatmap = HeatmapLoader(args.timestamp, args.problem)
+        heatmap.load_from_file()
+
+        if not heatmap is None:
+            while True:
+                answer = input("Show heatmap of simulation? (y/n): ").strip().lower()
+                if answer in ("y", "n"):
+                    break
+            if answer == "y":
+                heatmap.draw()
+        else:
+            print("Heatmap not available")
 
 if __name__ == '__main__':
     main()
