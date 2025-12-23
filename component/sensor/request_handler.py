@@ -34,6 +34,9 @@ def return_tile_type( env, pos ):
     if tile_data is None:
         return TileType.EMPTY
 
+    elif tile_data.name.upper() == "BOUNDARIES":
+        return TileType.BOUNDARIES
+
     elif tile_data.collideable:
         return TileType.COLLIDEABLE
 

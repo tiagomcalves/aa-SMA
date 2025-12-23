@@ -1,9 +1,10 @@
 {
   "environment": {
     "sensor_handlers": ["surroundings", "directions"],
+    "max_steps": 200,
     "map": {
-      "file": "map_example",
-      "boundaries": [10, 10],
+      "file": "basic_extended",
+      "boundaries": [30, 30],
       "spawns": [[2, 2]],
       "spawn_choice": 0,
       "destination": [[9, 9]],
@@ -14,11 +15,11 @@
 
   "agents": {
     "Phineas_The_Explorer": {
-      "starting_position": [0, 9],
+      "starting_position": [0, 29],
       "char": "P",
-      "learning_rate": 0.1,
+      "learning_rate": 0.06,
       "discount_factor": 0.9,
-      "epsilon": 0.1,
+      "epsilon": 0.45,
       "kb":"1766067386.078547"
     }
   }

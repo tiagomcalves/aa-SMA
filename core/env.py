@@ -29,7 +29,7 @@ class Environment:
         self._agent_data = {}
 
         _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
-        _lighthouse_ent = next(iter(_lighthouse_ent))
+        _lighthouse_ent = next(iter(_lighthouse_ent), None)
         self._lighthouse_position : Optional[Position] = self._map.find_ent_pos(_lighthouse_ent)
 
     def register_handler(self, request_type: str):

@@ -115,7 +115,7 @@ class Phineas(Navigator2D):
         super().end_episode(success)
         #Atualiza epsilon - desvio dos dadoss egundo o tiago alves
         if self.mode == "LEARNING":
-            self.ep.epsilon = max(0.01, self.ep.epsilon * 0.995)
+            self.ep.epsilon = max(0.05, self.ep.epsilon * 0.999)    #epsilon decay
 
         # REGISTO NO LOGGER
         if self.mode == "LEARNING" and self.learning_logger:
@@ -202,6 +202,7 @@ class Phineas(Navigator2D):
             """recebeu sinal para terminar episódio"""
             if reward != 0.0:   # not a simulation shutdown
                 self.register_reward(reward)
+                self._learn(self.last_state)
                 self.last_act_moved = True
                 direction = self.base_attributes.last_attempted_action.params.get("direction")
                 self._position = self._position + direction
@@ -217,6 +218,7 @@ class Phineas(Navigator2D):
 
         if obs.type == ObservationType.RESPONSE:
             self.register_reward(reward)
+            self._learn(self.last_state)
 
             _last_attempted_action = self.base_attributes.last_attempted_action
 
@@ -263,16 +265,19 @@ class Phineas(Navigator2D):
 
     def _choose_q_learning_move(self, valid_moves: list) -> Direction: #choose com q-learning
         state = self._get_state_key()
-        self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
-        if self.mode == "LEARNING" and self.last_state and self.last_action:
-            self._learn(state)
-        if self.mode == "TEST": #caso esteja a testar - escolhe sempre a melhor acao
-            return self._choose_best_q_action(state, valid_moves)
-        else:
+
+        if self.mode == "LEARNING":
+            self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
+
+            if self.last_state and self.last_action:
+                self._learn(state)
+
             if random.random() > self.ep.epsilon: #learning epsilon greedy
                 return self._choose_best_q_action(state, valid_moves)
-            else:
-                return random.choice(valid_moves)
+
+            return random.choice(valid_moves)
+
+        return self._choose_best_q_action(state, valid_moves)
 
     def _choose_best_q_action(self, state: str, valid_moves: list) -> Direction: #escolher acao com melhor q
         best_q = float('-inf')
@@ -309,16 +314,17 @@ class Phineas(Navigator2D):
         #moved = {1 if self.last_act_moved else 0}
         return f"{surr},{dir},{loc}|{self._position.x},{self._position.y}|C:{carry}"    # State string
 
-    def _learn(self, current_state: str):
+    def _learn(self, current_state: str, after_action: bool = False):
         if not self.last_state or not self.last_action:
             return
+
         old_q = self.q_table.get((self.last_state, self.last_action), 0.0)
 
         #Recompensa environment -
         r_extrinsic = self.ep.last_extrinsic_reward
 
         #Bónus de curiosidade
-        r_exploration = 0.5 / (self.visit_counts.get(current_state, 0) + 1)
+        r_exploration = 0.5 / (self.visit_counts.get(current_state, 1))
 
         #bonus proximidade ao lighthouse para esse problema
         r_shaping = 0.0
@@ -339,7 +345,7 @@ class Phineas(Navigator2D):
 
         total_reward = r_extrinsic + r_exploration + r_shaping #total
         #atualizar tabela cfr Bellman
-        max_next_q = 0.0
+        max_next_q = float('-inf')
         for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
             q = self.q_table.get((current_state, str(move)), 0.0)
             max_next_q = max(max_next_q, q)
@@ -349,7 +355,7 @@ class Phineas(Navigator2D):
         )
         self.q_table[(self.last_state, self.last_action)] = new_q
 
-        # print("new qtable entry:", (self.last_state, self.last_action), ":", new_q)
+        # print("qtable entry:", (self.last_state, self.last_action), "=> Old:", old_q, ", New:", new_q)
 
     # ***
     # ACT
@@ -362,11 +368,13 @@ class Phineas(Navigator2D):
         self.use_sensor(False)
 
         #Obtém movimentos válidos
-        valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
-        if not valid_moves:
-            act = self.action.wait()    # @tiago: env does not handle wait atm, so nothing happens
-            _last_attempted_action = act
-            return act
+        # valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
+        # if not valid_moves:
+        #     act = self.action.wait()    # @tiago: env does not handle wait atm, so nothing happens
+        #     _last_attempted_action = act
+        #     return act
+
+        valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
         final_dir = None
 
         #MODO PÂNICO (anti-loop)
