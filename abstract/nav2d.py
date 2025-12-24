@@ -41,9 +41,10 @@ class CurrEpisode:
 @dataclass
 class CurrLearningEpisode(CurrEpisode):
     # learning
-    epsilon : float = 0.15
-    learning_rate : float = 0.1,
-    discount_factor : float = 0.9,
+    epsilon : float = 0.0
+    epsilon_decay : float = 0.0
+    learning_rate : float = 0.0,
+    discount_factor : float = 0.0,
     q_table_size : int = 0
 
 

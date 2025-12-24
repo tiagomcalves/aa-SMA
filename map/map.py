@@ -13,11 +13,11 @@ def _format_char(char: str):
 
 
 class Map:
-    _char_entity_mapping: dict[str, MapEntity]
-    _boundaries: Position
-    _map_cells: dict[Position, MapEntity]
-    _boundaries_tile: MapEntity
-    position_visits: dict[Position, int]
+    _char_entity_mapping: dict[str, MapEntity]  # char-to-MapEntity dict (#,Wall; N,Nest; ...)
+    _boundaries: Position                       # bottom-right OOB position
+    _map_cells: dict[Position, MapEntity]       # actual map cells
+    _boundaries_tile: MapEntity                 # handy reference
+    position_visits: dict[Position, int]        # for heatmap logging
 
     def __init__(self, problem: str, data: dict, env):
         self._env = env

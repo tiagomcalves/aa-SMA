@@ -36,7 +36,7 @@ class Simulator:
         self._active_agents = 0
 
         # Define max steps
-        self.max_steps = 200
+        self.max_steps = args.max_steps #terrible hack
         self._scheduler = Scheduler(self.max_steps, args.episodes)
 
         self._env = env
@@ -90,7 +90,7 @@ class Simulator:
                 env.register_handler(handler)
 
         if "max_steps" in env_data:
-            args.max_steps = env_data["max_steps"]
+            setattr(args, "max_steps", env_data["max_steps"])   #terrible hack
 
         Simulator.initial_state = EnvInitialState(env.clone())
         return Simulator(env, agents_ref_list, args, timestamp)
