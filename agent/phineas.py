@@ -322,6 +322,8 @@ class Phineas(Navigator2D):
         return f"{surr},{dir},{loc}|{self.last_action}|C:{carry}"  # State string
 
     def _learn(self, current_state: str, after_action: bool = False):
+        if self.mode != "LEARNING":
+            return
         if not self.last_state or not self.last_action:
             return
 
@@ -408,9 +410,9 @@ class Phineas(Navigator2D):
             final_dir = random.choice(valid_moves)
 
         #Guarda estado para aprendizagem
-        if self.mode == "LEARNING":
-            self.last_state = self._get_state_key()
-            self.last_action = str(final_dir)
+        # if self.mode == "LEARNING":
+        self.last_state = self._get_state_key()
+        self.last_action = str(final_dir)
 
         # Cria ação
         act = self.action.move(final_dir)
