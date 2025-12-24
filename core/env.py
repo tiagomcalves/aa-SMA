@@ -1,5 +1,7 @@
 import copy
+import math
 import random
+from collections import deque
 from typing import Optional, cast
 
 from abstract.agent import Agent
@@ -28,9 +30,16 @@ class Environment:
         self._map = Map(problem, data["map"], self)
         self._agent_data = {}
 
+        # problem-specific data <Lighthouse>
+        # if self.problem_type == "lighthouse":
         _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
         _lighthouse_ent = next(iter(_lighthouse_ent), None)
         self._lighthouse_position : Optional[Position] = self._map.find_ent_pos(_lighthouse_ent)
+        self._bfs_lighthouse = self.compute_bfs_distances(self._lighthouse_position)
+
+        # problem-specific data <Foraging>
+    #     ...
+
 
     def register_handler(self, request_type: str):
         handler_cls = HANDLER_REGISTRY.get(request_type)
@@ -64,6 +73,7 @@ class Environment:
         new_env._map._boundaries = copy.deepcopy(self._map._boundaries) #deepcopy because its a Position
         new_env._map.position_visits = copy.deepcopy(self._map.position_visits)
         new_env._lighthouse_position = self._lighthouse_position
+        new_env._bfs_lighthouse = copy.deepcopy(self._bfs_lighthouse)
 
         return new_env
 
@@ -183,17 +193,23 @@ class Environment:
 
         if tile is None:
             if self.problem_type == "lighthouse":
-            #     calculate reward based on direction
-                new_distance_evaluation = self._get_distance_to_objective(current_pos, target_pos)
+                #     calculate reward based on direction
 
-                if new_distance_evaluation == -1 or new_distance_evaluation == 0:
-                    self.send_observation(agent, Observation.response(REWARD.MOVED, True))
-                    return
-                
-                if new_distance_evaluation == 1:
+                # Manhattan Distance
+
+                # new_distance_evaluation = self._get_distance_to_objective(current_pos, target_pos)
+                # if new_distance_evaluation == 1:
+                #     self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                #     return
+                prev_d = self._bfs_lighthouse[current_pos.y][current_pos.x]
+                curr_d = self._bfs_lighthouse[target_pos.y][target_pos.x]
+
+                if prev_d > curr_d:
                     self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                    print("getting CLOSER")
                     return
 
+            print("not really getting closer")
             self.send_observation(agent, Observation.response(REWARD.MOVED, True))
             return
 
@@ -320,3 +336,30 @@ class Environment:
         for pos, count in self._map.position_visits.items():
             visited_pos[(pos.x,pos.y)] = count
         return visited_pos
+
+    def compute_bfs_distances(self, goal: Position):
+
+        _w = self._map.get_max_x()
+        _h = self._map.get_max_y()
+
+        dist = [ [math.inf for _ in range(_w)] for _ in range(_h)]
+        gx, gy = goal.get()
+
+        q = deque()
+        dist[gy][gx] = 0
+        q.append((gx, gy))
+
+        directions = [Direction.LEFT, Direction.RIGHT, Direction.DOWN, Direction.UP]
+
+        while q:
+            x, y = q.popleft()
+
+            for _dir in directions:
+                nx, ny = x + _dir.value[0], y + _dir.value[1]
+
+                if 0 <= nx < _w and 0 <= ny < _h:
+                    if not self._map.get_position_data( Position(nx, ny) ) and dist[ny][nx] == math.inf:
+                        dist[ny][nx] = dist[y][x] + 1
+                        q.append((nx, ny))
+
+        return dist

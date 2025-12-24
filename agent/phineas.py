@@ -52,11 +52,13 @@ class Phineas(Navigator2D):
             self.ep.learning_rate = properties.get("learning_rate", 0.1)
             self.ep.discount_factor = properties.get("discount_factor", 0.9)
             self.ep.epsilon = properties.get("epsilon", 0.15)
+            self.ep.epsilon_decay = properties.get("epsilon_decay", 0.995)
 
             agent_config = {
                 "learning_rate": self.ep.learning_rate,
                 "discount_factor": self.ep.discount_factor,
                 "epsilon": self.ep.epsilon,
+                "epsilon_decay": self.ep.epsilon_decay,
                 "problem": problem
             }
             self.learning_logger = log().create_learning_logger(name, self.timestamp, agent_config)
@@ -96,7 +98,8 @@ class Phineas(Navigator2D):
                 current=self.ep.current+1,
                 learning_rate=self.ep.learning_rate,
                 discount_factor=self.ep.discount_factor,
-                epsilon=self.ep.epsilon)
+                epsilon=self.ep.epsilon,
+                epsilon_decay=self.ep.epsilon_decay)
             print("Episode", self.ep.current, " current qtable size:", len(self.q_table))
         else:
             super().start_episode()
@@ -113,11 +116,8 @@ class Phineas(Navigator2D):
 
     def end_episode(self, success: bool = False):
         super().end_episode(success)
-        #Atualiza epsilon - desvio dos dadoss egundo o tiago alves
-        if self.mode == "LEARNING":
-            self.ep.epsilon = max(0.05, self.ep.epsilon * 0.999)    #epsilon decay
 
-        # REGISTO NO LOGGER
+        # Learning Logger dict
         if self.mode == "LEARNING" and self.learning_logger:
             episode_data = {
                 'episode': self.ep.current,
@@ -125,6 +125,7 @@ class Phineas(Navigator2D):
                 'steps': self.ep.steps,
                 'success': success,
                 'epsilon': self.ep.epsilon,
+                'epsilon_decay': self.ep.epsilon_decay,
                 'learning_rate': self.ep.learning_rate,
                 'discount_factor': self.ep.discount_factor,
                 'q_table_size': len(self.q_table),
@@ -138,22 +139,26 @@ class Phineas(Navigator2D):
             if self.ep.current % 20 == 0:
                 self.learning_logger.save_q_table(self.q_table)
 
-        #Log do episódio
+        #Log output do episódio
         log().print(f"\n{'=' * 50}")
         log().print(f"{self.name}: EPISÓDIO {self.ep.current} FINALIZADO")
         log().print(f"{'=' * 50}")
         log().print(f"Sucesso: {'SIM' if success else 'NÃO'}")
         log().print(f"Recompensa total: {self.ep.reward:.2f}")
         log().print(f"Passos: {self.ep.steps}")
-
         if self.problem == "foraging":
             log().print(f"Comida apanhada: {self.ep.total_food_collected}")
             log().print(f"Comida entregue: {self.ep.total_food_delivered}")
-
         if self.mode == "LEARNING":
             log().print(f"epsilon atual: {self.ep.epsilon:.3f}")
 
         self.save_knowledge()
+
+        # epsilon decay for (potential) next episode:
+        if self.mode == "LEARNING":
+            # epsilon decay was initially 0.995, then experimented with 0.999. It was a bad idea
+            # for small grids and an aggressive exploitation: 0.97
+            self.ep.epsilon = max(0.05, self.ep.epsilon * self.ep.epsilon_decay)
 
     # ***
     # SENSOR
@@ -312,7 +317,9 @@ class Phineas(Navigator2D):
         loc = self.format_obs_for_state(ObservationType.LOCATION)
         carry = {1 if self.base_attributes.carrying else 0}
         #moved = {1 if self.last_act_moved else 0}
-        return f"{surr},{dir},{loc}|{self._position.x},{self._position.y}|C:{carry}"    # State string
+        # return f"{surr},{dir},{loc}|{self._position.x},{self._position.y}|C:{carry}"    # State string
+        # return f"{surr},{dir},{loc}|C:{carry}"  # State string
+        return f"{surr},{dir},{loc}|{self.last_action}|C:{carry}"  # State string
 
     def _learn(self, current_state: str, after_action: bool = False):
         if not self.last_state or not self.last_action:

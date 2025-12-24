@@ -97,7 +97,7 @@ class LearningLogger:
             writer = csv.writer(f)
             writer.writerow([
                 'episode', 'total_reward', 'steps', 'success',
-                'timestamp', 'epsilon', 'learning_rate', 'discount_factor',
+                'timestamp', 'epsilon', 'epsilon_decay', 'learning_rate', 'discount_factor',
                 'q_table_size', 'successful_returns', 'food_collected', 'food_delivered',
                 'avg_reward_last_10', 'success_rate_last_10'
             ])
@@ -117,6 +117,7 @@ class LearningLogger:
                 1 if episode_data.get('success', False) else 0,
                 timestamp,
                 round(episode_data.get('epsilon', 0.0), 4),
+                round(episode_data.get('epsilon_decay', 0.0), 4),
                 round(episode_data.get('learning_rate', 0.0), 4),
                 round(episode_data.get('discount_factor', 0.0), 4),
                 episode_data.get('q_table_size', 0),
