@@ -38,8 +38,8 @@ class AgentData:
     pos: Position
     score: float = 0.0
 
-    carrying: Optional[float] = None                #Foraging: None = Not carrying/ Float = carrying item value
-
+    carrying: Optional[float] = None    #Foraging: None = Not carrying/ Float = carrying item value
+    last_found_nest: Optional[Position] = None
 
 class EntityPosition:
     _step_count: int = 0
