@@ -107,7 +107,7 @@ class Environment:
             self._map.add_count_to_position(data.pos)
 
     def remove_agent(self, agent: Agent):
-        log().print(f"Env: remove agent {agent.name}")
+        log().vprint(f"Env: remove agent {agent.name}")
         if agent in self._agent_data:
             self._agent_data.pop(agent)
 

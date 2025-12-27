@@ -102,7 +102,7 @@ class Phineas(Navigator2D):
                 discount_factor=self.ep.discount_factor,
                 epsilon=self.ep.epsilon,
                 epsilon_decay=self.ep.epsilon_decay)
-            print("Episode", self.ep.current, " current qtable size:", len(self.q_table))
+            # print("Episode", self.ep.current, " current qtable size:", len(self.q_table))
         else:
             super().start_episode()
 
@@ -169,7 +169,7 @@ class Phineas(Navigator2D):
 
         tile = self.curr_observations[ObservationType.LOCATION].payload.tile
         if tile.upper() == "NEST":
-            print("new known nest position:", self._position)
+            # print("new known nest position:", self._position)
             self.known_nest_position = copy.deepcopy(self._position)
 
         return
@@ -266,7 +266,7 @@ class Phineas(Navigator2D):
 
     def _choose_q_learning_move(self, valid_moves: list) -> Direction: #choose com q-learning
         state = self._get_state_key()
-        print("curr state:", state)
+        # print("curr state:", state)
         if self.mode == "LEARNING":
             self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
 
@@ -308,7 +308,6 @@ class Phineas(Navigator2D):
         return None
 
     def _get_state_key(self) -> str: #chave de estado para o q-learning
-        print("clipped relative nest pos:", self._get_clipped_relative_pos())
         surr = self.format_obs_for_state(ObservationType.SURROUNDINGS)
         dr = self.format_obs_for_state(ObservationType.DIRECTION)
         loc = self.format_obs_for_state(ObservationType.LOCATION)
