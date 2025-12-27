@@ -17,6 +17,22 @@ from map.entity import AgentData, MapEntity, BOUNDARIES_TILE
 from map.map import Map
 from map.position import Position
 
+
+def _calculate_distance_to_objective(position, objective_pos):
+    return abs(position.x - objective_pos.x) + abs(position.y - objective_pos.y)
+
+
+def _get_distance_to_objective(current_pos, target_pos, obj_pos):
+    old_pos_dist = _calculate_distance_to_objective(current_pos, obj_pos)
+    new_pos_dist = _calculate_distance_to_objective(target_pos, obj_pos)
+
+    if old_pos_dist < new_pos_dist:
+        return -1
+    elif old_pos_dist > new_pos_dist:
+        return 1
+    return 0
+
+
 class Environment:
     _agent_data: dict[Agent, AgentData]
     renderer: Optional[Renderer] = None
@@ -31,11 +47,13 @@ class Environment:
         self._agent_data = {}
 
         # problem-specific data <Lighthouse>
-        # if self.problem_type == "lighthouse":
-        _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
-        _lighthouse_ent = next(iter(_lighthouse_ent), None)
-        self._lighthouse_position : Optional[Position] = self._map.find_ent_pos(_lighthouse_ent)
-        self._bfs_lighthouse = self.compute_bfs_distances(self._lighthouse_position)
+        self._bfs_lighthouse : list[list[float]] = []
+        self._lighthouse_position: Optional[Position] = None
+        if self.problem_type == "lighthouse":
+            _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
+            _lighthouse_ent = next(iter(_lighthouse_ent), None)
+            self._lighthouse_position = self._map.find_ent_pos(_lighthouse_ent)
+            self._bfs_lighthouse = self.compute_bfs_distances(self._lighthouse_position)
 
         # problem-specific data <Foraging>
     #     ...
@@ -118,12 +136,9 @@ class Environment:
     def act(self, action: Action, agent: Agent):
         if action.name == "move":
             self.validate_move(action)
-        # elif action.name == "pick":
-        #     self.agent_pick(action)
-        # elif action.name == "drop":
-        #     self.agent_drop(action)
-        else:
-            self.send_observation(agent, Observation.denied(action, 0.0))
+            return
+
+        self.send_observation(agent, Observation.denied(action, 0.0))
 
     def _pack_agents_positions(self) -> dict[Position, str]:
         positions = {}
@@ -193,23 +208,53 @@ class Environment:
 
         if tile is None:
             if self.problem_type == "lighthouse":
-                #     calculate reward based on direction
-
-                # Manhattan Distance
-
-                # new_distance_evaluation = self._get_distance_to_objective(current_pos, target_pos)
-                # if new_distance_evaluation == 1:
-                #     self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
-                #     return
                 prev_d = self._bfs_lighthouse[current_pos.y][current_pos.x]
                 curr_d = self._bfs_lighthouse[target_pos.y][target_pos.x]
 
                 if prev_d > curr_d:
                     self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
-                    print("getting CLOSER")
                     return
 
-            print("not really getting closer")
+            elif self.problem_type == "foraging":
+                #     calculate reward based on Manhattan Distance
+                agent_data = self._agent_data.get(agent)
+                if agent_data.last_found_nest is None:
+                    potential_nest_list = self._map.get_entity_by_name("NEST")
+                    first_nest_pos = next(iter(potential_nest_list), None)
+                    new_distance_evaluation = _get_distance_to_objective(current_pos, target_pos, first_nest_pos)
+                    if new_distance_evaluation == 1:
+                        self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                        return
+
+                    self.send_observation(agent, Observation.response(REWARD.MOVED, True))
+                    return
+
+                if agent_data.carrying is None:
+                    pass
+                    # foods = self._map.get_entity_by_name("FOOD")
+                    # closest_food_pos = None
+                    # if foods:
+                    #     min_dist = float('inf')
+                    #     best_f = None
+                    #     for f_pos in foods.keys():
+                    #         dist = abs(f_pos.x - current_pos.x) + abs(f_pos.y - current_pos.y)
+                    #         if dist < min_dist:
+                    #             min_dist = dist
+                    #             best_f = f_pos
+                    #     closest_food_pos = best_f
+                    #
+                    # diff_before = abs(closest_food_pos.x - current_pos.x) + abs(closest_food_pos.y - current_pos.y)
+                    # diff_after = abs(closest_food_pos.x - target_pos.x) + abs(closest_food_pos.y - target_pos.y)
+                    #
+                    # if diff_before > diff_after:
+                    #     self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                    #     return
+                else:
+                    new_distance_evaluation = _get_distance_to_objective(current_pos, target_pos, agent_data.last_found_nest)
+                    if new_distance_evaluation == 1:
+                        self.send_observation(agent, Observation.response(REWARD.MOVED_CLOSER, True))
+                        return
+
             self.send_observation(agent, Observation.response(REWARD.MOVED, True))
             return
 
@@ -237,6 +282,9 @@ class Environment:
 
         # --- AUTO-DROP ---
         if tile_name == "NEST":
+
+            agent_data.last_found_nest = copy.deepcopy(agent_data.pos)
+
             if agent_data.carrying is None:
                 self.send_observation(agent, Observation.response(REWARD.MOVED, True))
                 return
@@ -245,6 +293,7 @@ class Environment:
             agent_data.carrying = None
 
             navigator = cast(Navigator2D, agent)
+            navigator.base_attributes.carrying = False
             navigator.ep.total_food_delivered += 1
             navigator.ep.successful_returns += 1
 
@@ -258,21 +307,6 @@ class Environment:
             log().print(f">>> {action.agent.name} REACHED LIGHTHOUSE!")
             self.send_observation(agent, Observation.terminate(action, tile.reward))
             return
-
-    def _get_distance_to_objective(self, current_pos, target_pos):
-        old_pos_dist = self._calculate_distance_to_objective(current_pos)
-        new_pos_dist = self._calculate_distance_to_objective(target_pos)
-
-        if old_pos_dist < new_pos_dist:
-            return -1
-        elif old_pos_dist > new_pos_dist:
-            return 1
-        return 0
-
-    def _calculate_distance_to_objective(self, position):
-        goal_x = self._lighthouse_position.x
-        goal_y = self._lighthouse_position.y
-        return abs(position.x - goal_x) + abs(position.y - goal_y)
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}

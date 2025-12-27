@@ -1,12 +1,15 @@
+import copy
 import random
 import pickle # para guardar biblioteca knowledge
 import os
 from dataclasses import replace
 from typing import Optional
 
+from numpy.ma.core import clip
+
 from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D, CurrLearningEpisode, SessionData, BaseAttributes
-from abstract.utils.policy import _get_valid_moves, _is_oscillating
+from abstract.utils.policy import  _is_oscillating
 from component.action import Action
 from component.direction import Direction
 from component.observation import Observation, ObservationType, ObservationBundle
@@ -31,7 +34,7 @@ class Phineas(Navigator2D):
         self.visit_counts = {}
 
         #memoria espacial para ter nocao do ninho foraging
-        self.known_nest_position: Optional[Position] = self._position
+        self.known_nest_position: Optional[Position] = None
         self.my_estimated_position = self._position
 
         # Para lighthouse - estimativa de posição do farol
@@ -41,7 +44,6 @@ class Phineas(Navigator2D):
 
         self.last_state = None
         self.last_action = None
-        self.last_act_moved = False
         
         if self.mode == "LEARNING":
 
@@ -106,7 +108,6 @@ class Phineas(Navigator2D):
 
         self.last_state = None
         self.last_action = None
-        self.last_act_moved = False
         self._position = Position(0,0)
 
         if self.problem == "lighthouse":
@@ -165,13 +166,11 @@ class Phineas(Navigator2D):
     # ***
     def use_sensor(self, post_action: bool = False) -> None:
         super().use_sensor()
-        if self.problem == "lighthouse":
-            self._estimate_objective_position(self.curr_observations[ObservationType.DIRECTION].payload.direction)
 
         tile = self.curr_observations[ObservationType.LOCATION].payload.tile
         if tile.upper() == "NEST":
-            print("Saving next position")
-            self.known_nest_position = self._position
+            print("new known nest position:", self._position)
+            self.known_nest_position = copy.deepcopy(self._position)
 
         return
 
@@ -208,7 +207,6 @@ class Phineas(Navigator2D):
             if reward != 0.0:   # not a simulation shutdown
                 self.register_reward(reward)
                 self._learn(self.last_state)
-                self.last_act_moved = True
                 direction = self.base_attributes.last_attempted_action.params.get("direction")
                 self._position = self._position + direction
                 self.my_estimated_position = self._position
@@ -240,11 +238,9 @@ class Phineas(Navigator2D):
 
                             # resetstuck counter se se moveu
                             self.base_attributes.stuck_counter = 0
-                            self.last_act_moved = True
 
                     else:
                         self.base_attributes.stuck_counter += 1
-                        self.last_act_moved = False
 
 
     # ***
@@ -270,7 +266,7 @@ class Phineas(Navigator2D):
 
     def _choose_q_learning_move(self, valid_moves: list) -> Direction: #choose com q-learning
         state = self._get_state_key()
-
+        print("curr state:", state)
         if self.mode == "LEARNING":
             self.visit_counts[state] = self.visit_counts.get(state, 0) + 1
 
@@ -312,47 +308,40 @@ class Phineas(Navigator2D):
         return None
 
     def _get_state_key(self) -> str: #chave de estado para o q-learning
+        print("clipped relative nest pos:", self._get_clipped_relative_pos())
         surr = self.format_obs_for_state(ObservationType.SURROUNDINGS)
-        dir = self.format_obs_for_state(ObservationType.DIRECTION)
+        dr = self.format_obs_for_state(ObservationType.DIRECTION)
         loc = self.format_obs_for_state(ObservationType.LOCATION)
-        carry = {1 if self.base_attributes.carrying else 0}
-        #moved = {1 if self.last_act_moved else 0}
-        # return f"{surr},{dir},{loc}|{self._position.x},{self._position.y}|C:{carry}"    # State string
-        # return f"{surr},{dir},{loc}|C:{carry}"  # State string
-        return f"{surr},{dir},{loc}|{self.last_action}|C:{carry}"  # State string
+        carry = 1 if self.base_attributes.carrying else 0
+        if carry == 1:  # only possible in foraging
+            return f"{surr},{dr},{loc}|{self.last_action}|C:{carry}|{self._get_clipped_relative_pos()}"  # State string
+
+        return f"{surr},{dr},{loc}|{self.last_action}|C:{carry}"  # State string
+
+    def _get_clipped_relative_pos(self):
+        if self.known_nest_position is None:
+            return None, None
+        k = 5
+        dx_clipped = max(-k, min(k, self._position.x - self.known_nest_position.x))
+        dy_clipped = max(-k, min(k, self._position.y - self.known_nest_position.y))
+        return dx_clipped, dy_clipped
 
     def _learn(self, current_state: str, after_action: bool = False):
         if self.mode != "LEARNING":
             return
+
         if not self.last_state or not self.last_action:
             return
 
         old_q = self.q_table.get((self.last_state, self.last_action), 0.0)
 
-        #Recompensa environment -
+        #Recompensa environment
         r_extrinsic = self.ep.last_extrinsic_reward
 
         #Bónus de curiosidade
         r_exploration = 0.5 / (self.visit_counts.get(current_state, 1))
 
-        #bonus proximidade ao lighthouse para esse problema
-        r_shaping = 0.0
-        # if self.problem == "lighthouse" and self.estimated_objective_position:
-        #     diff_x = self.estimated_objective_position.x - self._position.x
-        #     diff_y = self.estimated_objective_position.y - self._position.y
-        #     move_str = self.last_action  # ex: "(0, 1)" ou "Direction.DOWN"
-        #     if "RIGHT" in move_str and diff_x > 0:
-        #         r_shaping += 2.0
-        #     elif "LEFT" in move_str and diff_x < 0:
-        #         r_shaping += 2.0
-        #     elif "DOWN" in move_str and diff_y > 0:
-        #         r_shaping += 2.0
-        #     elif "UP" in move_str and diff_y < 0:
-        #         r_shaping += 2.0
-        #     else:
-        #         r_shaping -= 0.2  # Pequena penalização por se afastar
-
-        total_reward = r_extrinsic + r_exploration + r_shaping #total
+        total_reward = r_extrinsic + r_exploration #total
         #atualizar tabela cfr Bellman
         max_next_q = float('-inf')
         for move in [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]:
@@ -364,8 +353,6 @@ class Phineas(Navigator2D):
         )
         self.q_table[(self.last_state, self.last_action)] = new_q
 
-        # print("qtable entry:", (self.last_state, self.last_action), "=> Old:", old_q, ", New:", new_q)
-
     # ***
     # ACT
     # ----
@@ -376,47 +363,21 @@ class Phineas(Navigator2D):
         #Atualiza sensores
         self.use_sensor(False)
 
-        #Obtém movimentos válidos
-        # valid_moves = _get_valid_moves(self.curr_observations.get(ObservationType.SURROUNDINGS))
-        # if not valid_moves:
-        #     act = self.action.wait()    # @tiago: env does not handle wait atm, so nothing happens
-        #     _last_attempted_action = act
-        #     return act
-
         valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
-        final_dir = None
 
-        #MODO PÂNICO (anti-loop)
-        # if _is_oscillating(self.base_attributes.pos_history) or self.base_attributes.stuck_counter > 3:
-        #     self.base_attributes.panic_mode = 3
-        #     self.base_attributes.stuck_counter = 0
+        final_dir = self._choose_q_learning_move(valid_moves)
 
-        # if self.base_attributes.panic_mode > 0:
-        #     self.base_attributes.panic_mode -= 1
-        #     final_dir = random.choice(valid_moves)
-
-        #LÓGICA ESPECÍFICA POR PROBLEMA
-        if self.problem == "foraging":
-            if self.base_attributes.carrying:
-                # Volta ao ninho
-                final_dir = self._navigate_towards_target(self.known_nest_position, valid_moves)
-            else: #procurar comida com q-learning
-                final_dir = self._choose_q_learning_move(valid_moves)
-
-        elif self.problem == "lighthouse": #aproximar-se do objetivo
-            final_dir = self._choose_q_learning_move(valid_moves)
-        #Final verification
         if not final_dir or final_dir not in valid_moves:
             final_dir = random.choice(valid_moves)
 
         #Guarda estado para aprendizagem
-        # if self.mode == "LEARNING":
         self.last_state = self._get_state_key()
         self.last_action = str(final_dir)
 
         # Cria ação
         act = self.action.move(final_dir)
         self.base_attributes.last_attempted_action = act
+
         return act
 
     # ****
@@ -441,6 +402,8 @@ class Phineas(Navigator2D):
             #foraging: Ninho e Comida
             if self.known_nest_position:
                 data['known_nest'] = (self.known_nest_position.x, self.known_nest_position.y)
+            else:
+                data['known_nest'] = (None, None)
 
             data['total_food_collected'] = getattr(self, 'total_food_collected', 0)
             data['total_food_delivered'] = getattr(self, 'total_food_delivered', 0)
