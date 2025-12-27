@@ -6,6 +6,7 @@ from typing import Optional
 
 from component.action import Action
 from component.direction import Direction
+from map.entity import TileType
 
 
 class ObservationType(Enum):
@@ -17,6 +18,7 @@ class ObservationType(Enum):
     DENIED = "denied"
     ACCEPTED = "accepted"
     TERMINATE = "terminate"
+    RESPONSE = "response"
 
 
 class Observation:
@@ -78,20 +80,21 @@ class Observation:
             raise ValueError("action and reward are required when payload is not provided")
         return cls(ObservationType.TERMINATE, {"action": action, "reward": reward})
 
+    @classmethod
+    def response(cls, reward: float, moved: bool = False, payload: dict | ResponsePayload | None = None):
+        if payload is not None:
+            return cls(ObservationType.RESPONSE, payload)
+        return cls(ObservationType.RESPONSE, {"reward": reward, "moved": moved})
+
 
 @dataclass
 class SurroundingsPayload:
-    cells: dict[Direction, str]
+    cells: dict[Direction, TileType]
 
 
 @dataclass
 class StatusPayload:
     reward: float
-
-
-@dataclass
-class AcceptedMovePayload:  #unused
-    direction: Direction
 
 
 @dataclass
@@ -121,6 +124,12 @@ class EmptyPayload:
     pass
 
 
+@dataclass
+class ResponsePayload:
+    reward: float
+    moved: bool
+
+
 OBSERVATION_PAYLOADS = {
     ObservationType.SURROUNDINGS: SurroundingsPayload,
     ObservationType.STATUS: StatusPayload,
@@ -129,8 +138,12 @@ OBSERVATION_PAYLOADS = {
     ObservationType.DENIED: DeniedPayload,
     ObservationType.ACCEPTED: AcceptedPayload,
     ObservationType.TERMINATE: AcceptedPayload,
+    ObservationType.RESPONSE: ResponsePayload,
 }
 
+DISABLED_SURROUNDINGS = Observation(ObservationType.SURROUNDINGS, SurroundingsPayload({Direction.UP: TileType.NONE, Direction.DOWN: TileType.NONE, Direction.LEFT: TileType.NONE, Direction.RIGHT: TileType.NONE}))
+DISABLED_DIRECTIONS = Observation(ObservationType.DIRECTION, GPSPayload( (Direction.NONE, Direction.NONE)))
+DISABLED_LOCATION = Observation(ObservationType.LOCATION, LocationPayload("N/A"))
 
 @dataclass
 class ObservationBundle:
@@ -141,18 +154,17 @@ class ObservationBundle:
     @classmethod
     def from_dict(cls, obs_dict: dict[str, Observation]):
         return cls(
-            surroundings=obs_dict.get("surroundings"),
-            directions=obs_dict.get("directions"),
-            location=obs_dict.get("location"),
+            surroundings=obs_dict.get("surroundings", DISABLED_SURROUNDINGS),
+            directions=obs_dict.get("directions", DISABLED_DIRECTIONS),
+            location=obs_dict.get("location", DISABLED_LOCATION),
         )
 
     def unpack(self, obs_type: ObservationType) -> dict | object | None:
-        # Nota: Agora self.surroundings.payload é garantidamente um SurroundingsPayload
-        # por isso podemos aceder a .cells diretamente
-        if obs_type == ObservationType.SURROUNDINGS and self.surroundings is not None:
-            return self.surroundings.payload.cells
-        elif obs_type == ObservationType.DIRECTION and self.directions is not None:
-            return self.directions.payload.direction
-        elif obs_type == ObservationType.LOCATION and self.location is not None:
-            return self.location.payload.tile
+        if obs_type == ObservationType.SURROUNDINGS:
+                return self.surroundings.payload.cells
+        elif obs_type == ObservationType.DIRECTION:
+                return self.directions.payload.direction
+        elif obs_type == ObservationType.LOCATION:
+                return self.location.payload.tile
+
         return None

@@ -1,16 +1,23 @@
 from dataclasses import dataclass
+from enum import Enum, auto, IntEnum
 from typing import Optional
 from map.position import Position
+
+class TileType(IntEnum):
+    NONE = auto()
+    EMPTY = auto()
+    BOUNDARIES = auto()
+    COLLIDEABLE = auto()
+    COLLECTABLE = auto()
+    NEST = auto()
 
 
 @dataclass
 class MapEntity:
-    # Estes campos TÊM de corresponder exatamente às chaves no ficheiro entity_schema.ndjson
     char: str
     name: str
     cost: float  # O erro dava-se aqui (falta de cost)
     collideable: bool
-    kill_zone: bool  # Necessário pelo schema
     active: bool  # Necessário pelo schema
     draw: bool
 
@@ -31,9 +38,7 @@ class AgentData:
     pos: Position
     score: float = 0.0
 
-    # Adicionado para o problema de Foraging (Recoleção).
-    # Se None = Mãos vazias. Se Float = Valor do recurso que carrega.
-    carrying: Optional[float] = None
+    carrying: Optional[float] = None                #Foraging: None = Not carrying/ Float = carrying item value
 
 
 class EntityPosition:
@@ -49,3 +54,8 @@ class EntityPosition:
 
     def get_steps(self) -> int:
         return self._step_count
+
+BOUNDARIES_TILE = MapEntity(
+            char=".", name="Boundaries", cost=0.0, collideable=True,
+             active=True, draw=False
+        )

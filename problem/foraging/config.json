@@ -1,6 +1,7 @@
 {
   "environment": {
-    "sensor_handlers": ["surroundings", "directions", "location"],
+    "max_steps": 1000,
+    "sensor_handlers": ["surroundings", "location"],
     "map": {
       "file": "foraging_map",
       "boundaries": [10, 10]
@@ -13,7 +14,9 @@
       "char": "P",
       "learning_rate": 0.1,
       "discount_factor": 0.9,
-      "epsilon": 0.1
+      "epsilon": 0.1,
+      "epsilon_decay": 0.97,
+      "kb": ""
     }
   }
 }

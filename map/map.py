@@ -2,7 +2,7 @@ import json
 import copy
 from typing import Union, Optional
 
-from map.entity import MapEntity
+from map.entity import MapEntity, BOUNDARIES_TILE
 from map.position import Position
 
 _EMPTY_CELL = " ."
@@ -13,23 +13,21 @@ def _format_char(char: str):
 
 
 class Map:
-    _char_entity_mapping: dict[str, MapEntity]
-    _boundaries: Position
-    _map_cells: dict[Position, MapEntity]
-    _default_empty: MapEntity
+    _char_entity_mapping: dict[str, MapEntity]  # char-to-MapEntity dict (#,Wall; N,Nest; ...)
+    _boundaries: Position                       # bottom-right OOB position
+    _map_cells: dict[Position, MapEntity]       # actual map cells
+    _boundaries_tile: MapEntity                 # handy reference
+    position_visits: dict[Position, int]        # for heatmap logging
 
     def __init__(self, problem: str, data: dict, env):
         self._env = env
 
-        # Entidade padrão "Chão"
-        self._default_empty = MapEntity(
-            char=".", name="Empty", cost=0.0, collideable=False,
-            kill_zone=False, active=False, draw=False
-        )
+        self._boundaries_tile = BOUNDARIES_TILE
 
         self._char_entity_mapping = self._load_obst_schema("map/entity_schema.ndjson")
         self._load_map_settings(data)
         self._map_cells = self._load_map_grid("problem/" + problem + "/" + data["file"] + ".grid")
+        self.position_visits = {}
 
     def __deepcopy__(self, memo):
         cls = self.__class__
@@ -38,13 +36,15 @@ class Map:
 
         new._env = None
 
-        new._default_empty = copy.deepcopy(self._default_empty, memo)
+        new._boundaries_tile = copy.deepcopy(self._boundaries_tile, memo)
         new._char_entity_mapping = copy.deepcopy(self._char_entity_mapping, memo)
         new._boundaries = copy.deepcopy(self._boundaries, memo)
         new._map_cells = copy.deepcopy(self._map_cells, memo)
 
         new._max_x = self._max_x
         new._max_y = self._max_y
+        new.position_visits = {}
+
         return new
 
     @staticmethod
@@ -108,13 +108,13 @@ class Map:
         Se dentro e vazio, retorna _default_empty.
         """
         if not self._is_inbounds(pos):
-            return None
+            return self._boundaries_tile
 
         entity = self._map_cells.get(pos)
         if entity:
             return entity
 
-        return self._default_empty
+        return None
 
     def get_entity_by_name(self, ent: str):
         results = {}
@@ -123,6 +123,12 @@ class Map:
             if data.name.upper() == target:
                 results[key] = data
         return results
+
+    def find_ent_pos(self, ent: MapEntity):
+        for pos, ent in self._map_cells.items():
+            if ent.name.upper() == "OBJECTIVE":
+                return pos
+        return None
 
     def remove_entity(self, pos: Position):
         """ Remove fisicamente a entidade da grelha (ex: comida comida). """
@@ -144,6 +150,9 @@ class Map:
         if template:
             # Insere uma cópia profunda na célula
             self._map_cells[pos] = copy.deepcopy(template)
+
+    def add_count_to_position(self, pos: Position):
+        self.position_visits[pos] = self.position_visits.get(pos, 0) + 1
 
     def render(self, agent_positions: dict[Position, str]):
         if self._env.renderer is not None:

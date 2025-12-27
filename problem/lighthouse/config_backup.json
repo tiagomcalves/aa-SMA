@@ -1,5 +1,6 @@
 {
   "environment": {
+    "max_steps": 25,
     "sensor_handlers": ["surroundings", "directions"],
     "map": {
       "file": "map_example",

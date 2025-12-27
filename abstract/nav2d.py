@@ -41,9 +41,10 @@ class CurrEpisode:
 @dataclass
 class CurrLearningEpisode(CurrEpisode):
     # learning
-    epsilon : float = 0.15
-    learning_rate : float = 0.1,
-    discount_factor : float = 0.9,
+    epsilon : float = 0.0
+    epsilon_decay : float = 0.0
+    learning_rate : float = 0.0,
+    discount_factor : float = 0.0,
     q_table_size : int = 0
 
 
@@ -95,23 +96,20 @@ class Navigator2D(Agent):
     def update_position(self, pos: Position):
         self._position = pos
 
-    #@abstractmethod
-    #def move(self, direction: Direction) -> None:
-    #    pass
-
     def get_char(self) -> str:
         return self._char
 
-    def use_sensor(self, post_action: bool) -> None:
+    def use_sensor(self, post_action: bool = False) -> None:
+        self.curr_observations.clear()
         if post_action:
             #self.state.update_sensor_data(post_action, self._sensor.get_info(self))
             return
 
         curr_obs_bundle = self._sensor.get_info(self)
         #self.state.update_sensor_data(post_action, curr_obs_bundle)
-        self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings} if curr_obs_bundle.surroundings is not None else {})
-        self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions} if curr_obs_bundle.directions is not None else {})
-        self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location} if curr_obs_bundle.location is not None else {})
+        self.curr_observations.update({ObservationType.SURROUNDINGS : curr_obs_bundle.surroundings})
+        self.curr_observations.update({ObservationType.DIRECTION : curr_obs_bundle.directions})
+        self.curr_observations.update({ObservationType.LOCATION : curr_obs_bundle.location})
 
     @abstractmethod
     def observation(self, obs: Observation):

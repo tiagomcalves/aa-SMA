@@ -11,7 +11,7 @@ from abstract import Agent
 from abstract.agent import AgentStatus
 from abstract.utils.action_builder import ActionBuilder
 from component.observation import Observation
-from core.logger import ReportLogger, log
+from core.logger import ReportLogger, log, HeatLogger
 from core.loader import ConfigLoader
 from core.scheduler import Scheduler
 from core.env import Environment
@@ -35,19 +35,22 @@ class Simulator:
         self._STEP_SECONDS = args.step / 1000
         self._active_agents = 0
 
-        # Cria diretório de logs
-        self._create_log_directory()
-        self.report_log = ReportLogger(timestamp, self._problem)
-
         # Define max steps
-        self.max_steps = 100
+        self.max_steps = args.max_steps #terrible hack
         self._scheduler = Scheduler(self.max_steps, args.episodes)
 
         self._env = env
         self._agents = agents
         self._curr_time = timestamp
 
+        # Cria diretório de logs
+        self._create_log_directory()
+        self.report_log = ReportLogger(timestamp, self._problem)
+        max_x, max_y = self._env.get_map_size()
+        self.heatmap_log = HeatLogger(timestamp, self._problem, max_x, max_y)
+
         self._boot_output()
+        if not args.headless: self._env.render()
 
     def _create_log_directory(self):
         log_dir = f"logs/{self._problem}"
@@ -85,6 +88,9 @@ class Simulator:
         if "sensor_handlers" in env_data:
             for handler in env_data["sensor_handlers"]:
                 env.register_handler(handler)
+
+        if "max_steps" in env_data:
+            setattr(args, "max_steps", env_data["max_steps"])   #terrible hack
 
         Simulator.initial_state = EnvInitialState(env.clone())
         return Simulator(env, agents_ref_list, args, timestamp)
@@ -167,6 +173,7 @@ class Simulator:
             log().print(f"EPISODIO CONCLUÍDO {"(MAX STEPS ALCANÇADO)" if self._scheduler.out_of_steps() else ""}")
             log().print(f"Total de steps: {self._scheduler.curr_step()}")
 
+            self.heatmap_log.collect(self._env.retrieve_visited_positions())
             self._scheduler.next_episode()
             if not self._scheduler.out_of_episode():
                 self._env = self.initial_state.env.clone()
@@ -174,6 +181,7 @@ class Simulator:
         print("agentes ativos:", self._active_agents)
         log().print(f"SIMULAÇÃO CONCLUÍDA")
         self.report_log.close()
+        self.heatmap_log.close()
 
 
     def _boot_output(self) -> None:

@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+from enum import Enum, auto
 
 from core.logger import log
 from component.sensor import registry
 from component.direction import Direction
 from component.observation import Observation, ObservationType
-from map.entity import AgentData
+from map.entity import AgentData, TileType
 
 
 # --- Classe Auxiliar para permitir acesso com ponto (obj.cells) ---
@@ -26,6 +27,28 @@ class LocationHandler(Handler):
         payload = Payload(tile=env.get_tile_as_str(agent_data.pos))
         return Observation(ObservationType.LOCATION, payload)
 
+
+def return_tile_type( env, pos ):
+    tile_data = env.get_tile_data(pos)
+
+    if tile_data is None:
+        return TileType.EMPTY
+
+    elif tile_data.name.upper() == "BOUNDARIES":
+        return TileType.BOUNDARIES
+
+    elif tile_data.collideable:
+        return TileType.COLLIDEABLE
+
+    elif tile_data.name.upper() == "FOOD":
+        return TileType.COLLECTABLE
+
+    elif tile_data.name.upper() == "NEST":
+        return TileType.NEST
+
+    return -1
+
+
 @registry.register_handler("surroundings")
 class SurroundingsHandler(Handler):
     def handle(self, agent_data: AgentData, env) -> Observation:
@@ -33,23 +56,20 @@ class SurroundingsHandler(Handler):
         surroundings_data = {}
 
         # Verifica UP
-        up_pos = agent_data.pos + Direction.UP
-        surroundings_data[Direction.UP] = env.get_tile_as_str(up_pos)
+        pos = agent_data.pos + Direction.UP
+        surroundings_data[Direction.UP] = return_tile_type(env, pos)
 
         # Verifica DOWN
-        down_pos = agent_data.pos + Direction.DOWN
-        surroundings_data[Direction.DOWN] = env.get_tile_as_str(down_pos)
+        pos = agent_data.pos + Direction.DOWN
+        surroundings_data[Direction.DOWN] = return_tile_type(env, pos)
 
         # Verifica LEFT
-        left_pos = agent_data.pos + Direction.LEFT
-        surroundings_data[Direction.LEFT] = env.get_tile_as_str(left_pos)
+        pos = agent_data.pos + Direction.LEFT
+        surroundings_data[Direction.LEFT] = return_tile_type(env, pos)
 
         # Verifica RIGHT
-        right_pos = agent_data.pos + Direction.RIGHT
-        surroundings_data[Direction.RIGHT] = env.get_tile_as_str(right_pos)
-
-        # NÃO inclui Direction.NONE!
-        # O agente já sabe onde está através do sensor "location"
+        pos = agent_data.pos + Direction.RIGHT
+        surroundings_data[Direction.RIGHT] = return_tile_type(env, pos)
 
         payload = Payload(cells=surroundings_data)
         return Observation(ObservationType.SURROUNDINGS, payload)

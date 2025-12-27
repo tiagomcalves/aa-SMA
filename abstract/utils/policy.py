@@ -7,6 +7,7 @@ from core.logger import log
 from abstract.utils.action_builder import ActionBuilder
 from component.observation import Observation, ObservationType
 from component.direction import Direction
+from map.entity import TileType
 
 
 class Policy(ABC):
@@ -174,21 +175,14 @@ POLICY_REGISTRY = {
 # general movement checks
 
 def _get_valid_moves(surroundings: Observation) -> list:
-    """Obtém movimentos válidos (não paredes)"""
+    """Obtém movimentos válidos (não colisiveis)"""
     valid_moves = []
 
     if surroundings:
-        bad_tiles = ["WALL"]
+        bad_tiles = []  #deactivated
         cells = surroundings.payload.cells
-
         for direction, content in cells.items():
-            if direction == Direction.NONE:
-                continue
-
-            #if d != Direction.NONE and str(c).upper().strip() not in bad_tiles:
-            content_clean = str(content).strip()
-            is_wall = content_clean in bad_tiles or content_clean.upper() in bad_tiles
-
+            is_wall = content in bad_tiles
             if not is_wall:
                 valid_moves.append(direction)
     else:
