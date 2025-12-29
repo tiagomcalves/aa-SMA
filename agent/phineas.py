@@ -301,8 +301,8 @@ class Phineas(Navigator2D):
         if self.base_attr.known_nest_pos is None:
             return None, None
         k = 5
-        dx_clipped = max(-k, min(k, self.base_attr.pos.x - self.base_attr.known_nest_pos.x))
-        dy_clipped = max(-k, min(k, self.base_attr.pos.y - self.base_attr.known_nest_pos.y))
+        dx_clipped = max(-k, min(k, self.base_attr.known_nest_pos.x - self.base_attr.pos.x))
+        dy_clipped = max(-k, min(k, self.base_attr.known_nest_pos.y - self.base_attr.pos.y))
         return dx_clipped, dy_clipped
 
     def _learn(self, current_state: str, after_action: bool = False):

@@ -1,10 +1,9 @@
-import random
+import copy
 
 from abstract.agent import AgentStatus
 from abstract.nav2d import Navigator2D
 from abstract.utils.policy import POLICY_REGISTRY
 from component.action import Action
-from component.direction import Direction
 from component.observation import Observation, ObservationType
 from core.logger import log
 from map.position import Position
@@ -15,15 +14,7 @@ class Ferb(Navigator2D):
         super().__init__(problem, name, properties)
         #self.char = properties.get("char", "F")
         self.policy = POLICY_REGISTRY[problem]
-
         log().print(f"{name}: Inicializado para {problem} ({type(self.policy).__name__})")
-
-        #memoria espacial para ter nocao do ninho foraging
-
-        # Para lighthouse - estimativa de posição do farol
-        self.estimated_objective_position: Optional[Position] = None
-
-        self.last_action = None
 
     def start_episode(self) -> None:
         # # Estado
@@ -57,8 +48,11 @@ class Ferb(Navigator2D):
             self.base_attr.pos_history.append(self.base_attr.pos)
             if len(self.base_attr.pos_history) > 10:
                 self.base_attr.pos_history.pop(0)
-                
-            self.base_attr.pos = self.base_attr.pos + self.last_action
+
+            _last_act = self.base_attr.last_attempted_action
+            if _last_act.name == "move":
+                direction = _last_act.params.get("direction")
+                self.base_attr.pos = self.base_attr.pos + direction
 
         return
 
@@ -69,7 +63,8 @@ class Ferb(Navigator2D):
         # Atualiza sensores
         self.use_sensor(False)
 
-
+        if self.curr_observations[ObservationType.LOCATION].payload.tile.upper() == "NEST":
+            self.base_attr.known_nest_pos = copy.deepcopy(self.base_attr.pos)
 
         self.last_action = self.policy.act(self.name, self.curr_observations, self.base_attr, self.action)
         return self.last_action

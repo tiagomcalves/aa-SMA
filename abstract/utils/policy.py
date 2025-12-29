@@ -8,6 +8,7 @@ from abstract.utils.action_builder import ActionBuilder
 from component.observation import Observation, ObservationType
 from component.direction import Direction
 from map.entity import TileType
+from map.position import Position
 
 
 class Policy(ABC):
@@ -63,41 +64,45 @@ class LighthousePolicy(Policy):
 
 class ForagingPolicy(Policy):
     def act(self, name, curr_observations: dict[ObservationType, Observation], attr: BaseAttributes, action:ActionBuilder):
-
-        # check valid moves
         obs_surr = curr_observations.get(ObservationType.SURROUNDINGS)
 
         valid_moves = _get_valid_moves(obs_surr)
-
         if not valid_moves:
             act = action.wait()
             attr.last_attempted_action = act
             return act
 
-        # detecao de stuck
-        _panic_mode = attr.panic_mode
-        if _is_stuck(attr.stuck_counter, attr.pos_history) or _panic_mode > 0:
-            if _panic_mode == 0:
-                _panic_mode = 3  # 3 movs fica em panico
-            else:
-                _panic_mode -= 1
-            # No modo pânico, movimento totalmente aleatório
-            final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action, avoid_recent=False)
+        final_dir = None
 
-            act = action.move(final_dir)
-            attr.last_attempted_action = act
-            return act
-
-        # FORAGING: COMPORTAMENTO ALEATÓRIO
-        if attr.carrying:  # se tiver a carregar
-            # Primeiro verifica se vê ninho diretamente
-            nest_dir = _scan_for_nest(obs_surr, valid_moves)
-            if nest_dir:
-                final_dir = nest_dir
+        if attr.carrying:
+            if attr.known_nest_pos is None:
+                nest_in_surr = _scan_for_nest(obs_surr, valid_moves)
+                if nest_in_surr:
+                    final_dir = nest_in_surr
+                else:
+                    final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action, avoid_recent=False)
             else:
-                # Se não vê ninho, movimento aleatório
-                final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action, avoid_recent=False)
-        # Se não está carregando, comportamento de busca aleatória
+                dx, dy = _convert_vec_to_direction(attr.pos, attr.known_nest_pos)
+
+                if attr.follow_wall:
+                    if _is_obstacle_passed( (dx, dy), attr.saved_directions):
+                        attr.follow_wall = False
+
+                if not attr.follow_wall:
+                    attr.saved_directions = (dx, dy)
+                    candidates = []
+                    if dx in valid_moves:
+                        candidates.append(dx)
+                    if dy in valid_moves:
+                        candidates.append(dy)
+                    if candidates:
+                        final_dir = random.choice(candidates)
+                else:
+                    final_dir = _follow_wall(valid_moves)
+
+                if not final_dir:
+                    attr.follow_wall = True
+                    final_dir = _follow_wall(valid_moves)
         else:
             # Verifica se vê comida nas redondezas
             food_dir = _scan_for_food(obs_surr, valid_moves)
@@ -156,6 +161,27 @@ def _is_obstacle_passed(new_directions: tuple[Direction,Direction], saved_direct
         or saved_directions[1] is not None and new_directions[1] != saved_directions[1]:
         return True
     return False
+
+def _convert_vec_to_direction(from_pos: Position, to_pos: Position):
+    fX = to_pos.x - from_pos.x
+    fY = to_pos.y - from_pos.y
+    fX_direction_axis : Direction
+    fY_direction_axis : Direction
+    if fX > 0:
+        fX_direction_axis = Direction.RIGHT
+    elif fX < 0:
+        fX_direction_axis = Direction.LEFT
+    else:
+        fX_direction_axis = Direction.NONE
+
+    if fY > 0:
+        fY_direction_axis = Direction.DOWN
+    elif fY < 0:
+        fY_direction_axis = Direction.UP
+    else:
+        fY_direction_axis = Direction.NONE
+
+    return fX_direction_axis, fY_direction_axis
 
 def _follow_wall(valid_moves):
     #follow right-handed
