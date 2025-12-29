@@ -8,7 +8,7 @@ class TileType(IntEnum):
     EMPTY = auto()
     BOUNDARIES = auto()
     COLLIDEABLE = auto()
-    COLLECTABLE = auto()
+    PICKABLE = auto()
     NEST = auto()
 
 

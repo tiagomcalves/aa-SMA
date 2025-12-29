@@ -156,7 +156,7 @@ class PickleGraphLoader:
             try:
                 with open(path, "rb") as f:
                     data = pickle.load(f)
-                    # pprint(f"{agent_name} data, {data}")
+                    pprint(f"{agent_name} data, {data}")
                     self.agent_line[agent_name] = {}
                     self.agent_line[agent_name]["rewards"] = data.get('total_rewards')
                     self.agent_line[agent_name]["steps"] = data.get('total_steps')

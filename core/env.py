@@ -270,7 +270,7 @@ class Environment:
             agent_data.carrying = 1.0
 
             navigator = cast(Navigator2D, agent)
-            navigator.base_attributes.carrying = True
+            navigator.base_attr.carrying = True
             navigator.ep.total_food_collected += 1
 
             self._map.remove_entity(target_pos)  # Remove visualmente AGORA
@@ -293,7 +293,7 @@ class Environment:
             agent_data.carrying = None
 
             navigator = cast(Navigator2D, agent)
-            navigator.base_attributes.carrying = False
+            navigator.base_attr.carrying = False
             navigator.ep.total_food_delivered += 1
             navigator.ep.successful_returns += 1
 

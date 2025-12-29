@@ -1,22 +1,29 @@
 from abc import abstractmethod
 from dataclasses import dataclass, replace, field
+from typing import Optional
 
 from abstract import Agent
 from component.action import Action
+from component.direction import Direction
 from component.observation import Observation, ObservationType
 from map.position import Position
 
 @dataclass
 class BaseAttributes:
     # Estado
-    carrying : bool = False
+    pos : Position = Position(0, 0)
     last_attempted_action : bool = None
     episode_ended : bool = False
+    carrying : bool = False
+    known_nest_pos : Optional[Position] = None
 
     # Sistema anti-loop para foraging
     pos_history : list = field(default_factory=list)
     stuck_counter : int = 0
     panic_mode : int = 0
+
+    follow_wall : bool = False
+    saved_directions : tuple[Direction,Direction] = (None,None)
 
     random_walk : bool = True  # Sempre caminhada aleatória quando não tem comida
     wander_tendency : float = 0.8  # 80% chance de continuar na mesma direção
@@ -57,7 +64,6 @@ class SessionData:
 
 class Navigator2D(Agent):
 
-    _position : Position
     _char : str
 
     @abstractmethod
@@ -65,23 +71,22 @@ class Navigator2D(Agent):
         super().__init__(problem, name, properties)
         self.problem = problem
         self.char = properties.get("char", "A")
-        self._position = Position(*properties.get("starting_position", (0, 0)))
 
-        self.base_attributes = BaseAttributes()
+        self.base_attr = BaseAttributes()
         self.ep = CurrEpisode()
         self.session = SessionData()
 
 
     def start_episode(self) -> None:
-        self.base_attributes = BaseAttributes()
+        self.base_attr = BaseAttributes()
         self.ep = replace(CurrEpisode(), current=self.ep.current+1)
 
     def end_episode(self, success: bool = False):
         # Verifica se já terminou (evita chamadas duplicadas)
-        if self.base_attributes.episode_ended:  # se episodio acabou - n se mexe mais
+        if self.base_attr.episode_ended:  # se episodio acabou - n se mexe mais
             return
 
-        self.base_attributes.episode_ended = True
+        self.base_attr.episode_ended = True
         self.ep.success = success
 
         # Guarda no histórico
@@ -91,10 +96,10 @@ class Navigator2D(Agent):
 
 
     def get_position(self) -> Position:
-        return self._position
+        return self.base_attr.pos
 
     def update_position(self, pos: Position):
-        self._position = pos
+        self.base_attr.pos = pos
 
     def get_char(self) -> str:
         return self._char

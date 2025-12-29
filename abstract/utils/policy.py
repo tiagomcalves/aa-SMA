@@ -18,19 +18,10 @@ class Policy(ABC):
 
 class LighthousePolicy(Policy):
     def act(self, name, curr_observations: dict[ObservationType, Observation], attr: BaseAttributes, action:ActionBuilder):
-        obs_loc = curr_observations.get(ObservationType.LOCATION)
-        if obs_loc:
-            tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
-
-            if tile in ["OBJECTIVE"]:
-                act = action.pick()
-                attr.last_attempted_action = act
-                return act
 
         obs_surr = curr_observations.get(ObservationType.SURROUNDINGS)
 
         # check valid moves
-
         valid_moves = _get_valid_moves(obs_surr)
 
         if not valid_moves:
@@ -38,26 +29,17 @@ class LighthousePolicy(Policy):
             attr.last_attempted_action = act
             return act
 
-        # detecao de stuck
-        _panic_mode = attr.panic_mode
-        if _is_stuck(attr.stuck_counter, attr.pos_history) or _panic_mode > 0:
-            if _panic_mode == 0:
-                _panic_mode = 3  # 3 movs fica em panico
-            else:
-                _panic_mode -= 1
-            # No modo pânico, movimento totalmente aleatório
-            final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action, avoid_recent=False)
+        # lighthouse specific
 
-            act = action.move(final_dir)
-            attr.last_attempted_action = act
-            return act
-
-        # specific lighthouse
-
-        obs_dir = curr_observations.get(ObservationType.DIRECTION)
+        dx, dy = curr_observations.get(ObservationType.DIRECTION).payload.direction
         final_dir = None
-        if obs_dir:
-            dx, dy = obs_dir.payload.direction
+
+        if attr.follow_wall:
+            if _is_obstacle_passed( (dx, dy), attr.saved_directions):
+                attr.follow_wall = False
+
+        if not attr.follow_wall:
+            attr.saved_directions = (dx, dy)
             candidates = []
             if dx in valid_moves:
                 candidates.append(dx)
@@ -66,13 +48,12 @@ class LighthousePolicy(Policy):
             if candidates:
                 final_dir = random.choice(candidates)
                 # seguir direcao farol
+        else:
+            final_dir = _follow_wall(valid_moves)
 
         if not final_dir:
-            final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action)
-
-        if final_dir not in valid_moves:
-            log().vprint(f"{self.name}: Direção inválida, corrigindo...")
-            final_dir = _choose_random_direction(valid_moves, attr.last_attempted_action)
+            attr.follow_wall = True
+            final_dir = _follow_wall(valid_moves)
 
             # Cria ação
         act = action.move(final_dir)
@@ -82,21 +63,6 @@ class LighthousePolicy(Policy):
 
 class ForagingPolicy(Policy):
     def act(self, name, curr_observations: dict[ObservationType, Observation], attr: BaseAttributes, action:ActionBuilder):
-
-        obs_loc = curr_observations.get(ObservationType.LOCATION)
-        if obs_loc:
-            tile = getattr(obs_loc.payload, 'tile', "EMPTY").upper()
-
-            if not attr.carrying and tile in ["FOOD", "RESOURCE", "F"]:
-                act = action.pick()
-                attr.last_attempted_action = act  # apanhar food
-                return act
-
-                # Se está no ninho E está carregando
-            if attr.carrying and tile == "NEST":
-                act = action.drop()
-                attr.last_attempted_action = act  # entregar
-                return act
 
         # check valid moves
         obs_surr = curr_observations.get(ObservationType.SURROUNDINGS)
@@ -157,15 +123,11 @@ class MazePolicy(Policy):
         pass
 
 
-
-#    registering problem string to policy class
-
 POLICY_REGISTRY = {
     "lighthouse": LighthousePolicy(),
     "foraging": ForagingPolicy(),
     "maze": MazePolicy()
 }
-
 
 
 """
@@ -176,35 +138,49 @@ POLICY_REGISTRY = {
 
 def _get_valid_moves(surroundings: Observation) -> list:
     """Obtém movimentos válidos (não colisiveis)"""
-    valid_moves = []
+    cells = surroundings.payload.cells
 
-    if surroundings:
-        bad_tiles = [ TileType.BOUNDARIES, TileType.COLLIDEABLE]
-        cells = surroundings.payload.cells
-        for direction, content in cells.items():
-            is_wall = content in bad_tiles
-            if not is_wall:
-                valid_moves.append(direction)
-    else:
-        valid_moves = [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+    if TileType.NONE in cells.values():
+        return [Direction.UP, Direction.DOWN, Direction.LEFT, Direction.RIGHT]
+
+    valid_moves = []
+    bad_tiles = [ TileType.BOUNDARIES, TileType.COLLIDEABLE]
+    for direction, content in cells.items():
+        if content not in bad_tiles:
+            valid_moves.append(direction)
 
     return valid_moves
 
+def _is_obstacle_passed(new_directions: tuple[Direction,Direction], saved_directions: tuple[Direction,Direction]):
+    if saved_directions[0] is not None and new_directions[0] != saved_directions[0] \
+        or saved_directions[1] is not None and new_directions[1] != saved_directions[1]:
+        return True
+    return False
+
+def _follow_wall(valid_moves):
+    #follow right-handed
+    next_direction = None
+    if Direction.RIGHT in valid_moves:
+        next_direction = Direction.RIGHT
+    elif next_direction is None and Direction.UP in valid_moves:
+        next_direction = Direction.UP
+    elif next_direction is None and Direction.LEFT in valid_moves:
+        next_direction = Direction.LEFT
+    elif next_direction is None and Direction.DOWN in valid_moves:
+        next_direction = Direction.DOWN
+    return next_direction
 
 def _is_stuck(stuck_counter, pos_history) -> bool: #ta preso ou em loop
     if stuck_counter >= 3:
         return True
-
     if len(pos_history) >= 6:
         # Verifica se está repetindo as últimas posições
         recent = pos_history[-6:]
         if len(set(recent)) <= 2:
             return True
-
     return False
 
-
-def _choose_random_direction(valid_moves: list, last_attempt_action, avoid_recent: bool = True) -> Direction:
+def _choose_random_direction(valid_moves: list, last_attempt_action, avoid_recent: bool = True) -> Optional[Direction]:
     #random diretion
     if not valid_moves:
         return None
@@ -241,35 +217,31 @@ def _navigate_randomly_with_momentum(valid_moves: list, last_attempt_action, wan
     # Caso contrário, escolhe aleatoriamente
     return _choose_random_direction(valid_moves, last_attempt_action)
 
-
 def _is_oscillating(pos_history) -> bool:
     if len(pos_history) < 6:
         return False
     unique_pos = set(list(pos_history)[-6:])
     return len(unique_pos) <= 2
 
+
 # foraging-specific auxiliary functions
 
 def _scan_for_food(surroundings, valid_moves: list) -> Optional[Direction]:  # verifica comida redondezas
-    if surroundings:
-        for direction, content in surroundings.payload.cells.items():
-            if direction not in valid_moves:
-                continue
+    for direction, content in surroundings.payload.cells.items():
+        if direction not in valid_moves:
+            continue
 
-            content_upper = str(content).upper().strip()
-            if content_upper in ["FOOD", "F", "RESOURCE"]:  # viu comida
-                return direction
+        if content in [TileType.PICKABLE]:
+            return direction
     return None
 
 
 def _scan_for_nest(surroundings, valid_moves: list) -> Optional[Direction]:
     """Verifica se vê ninho nas redondezas (quando carregando)"""
-    if surroundings:
-        for direction, content in surroundings.payload.cells.items():
-            if direction not in valid_moves:
-                continue
+    for direction, content in surroundings.payload.cells.items():
+        if direction not in valid_moves:
+            continue
 
-            content_upper = str(content).upper().strip()
-            if content_upper in ["NEST", "N"]:  # viu ninho
-                return direction
+        if content in [ TileType.NEST ]:
+            return direction
     return None

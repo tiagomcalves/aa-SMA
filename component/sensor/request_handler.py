@@ -41,7 +41,7 @@ def return_tile_type( env, pos ):
         return TileType.COLLIDEABLE
 
     elif tile_data.name.upper() == "FOOD":
-        return TileType.COLLECTABLE
+        return TileType.PICKABLE
 
     elif tile_data.name.upper() == "NEST":
         return TileType.NEST
