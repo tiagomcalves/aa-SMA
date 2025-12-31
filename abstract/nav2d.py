@@ -95,10 +95,10 @@ class Navigator2D(Agent):
         self.session.successes.append(1 if success else 0)
 
 
-    def get_position(self) -> Position:
+    def get_pos(self) -> Position:
         return self.base_attr.pos
 
-    def update_position(self, pos: Position):
+    def set_pos(self, pos: Position):
         self.base_attr.pos = pos
 
     def get_char(self) -> str:

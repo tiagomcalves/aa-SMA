@@ -42,7 +42,7 @@ class Agent(ABC):
     def create(cls, problem: str, name: str, data: dict) -> Agent:
         log().vprint(f"create( name: \"{name}\", data: {data} ))")
         full_class_str = data["class"]
-        module_name, class_name = full_class_str.rsplit(".", 1)
+        _, class_name = full_class_str.rsplit(".", 1)
         sub_cls = Agent._registry[class_name]
         return sub_cls(problem, name, data)
 
@@ -62,8 +62,8 @@ class Agent(ABC):
     def act(self) -> Action:
         pass
 
-    def check_current_state(self, reward: float):
-        pass
+    # def check_current_state(self, reward: float):
+    #     pass
 
     # def set_env(self, env: Environment) -> None:
     #     self._env = env
@@ -74,17 +74,17 @@ class Agent(ABC):
     def install(self, sensor: Sensor) -> None:
         self._sensor = sensor
 
-    def has_sensor(self) -> bool:
-        if self._sensor is None:
-            return False
-        return True
+    # def has_sensor(self) -> bool:
+    #     if self._sensor is None:
+    #         return False
+    #     return True
 
     @abstractmethod
     def use_sensor(self) -> Observation:
         pass
 
-    def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
-        pass
+    # def communicate(self, msg: str, sender: Agent):   # thanks to "import annotations", we can have an "Agent" type in its own class
+    #     pass
 
     @abstractmethod
     def start_episode(self) -> None:

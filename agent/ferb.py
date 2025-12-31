@@ -6,7 +6,6 @@ from abstract.utils.policy import POLICY_REGISTRY
 from component.action import Action
 from component.observation import Observation, ObservationType
 from core.logger import log
-from map.position import Position
 
 
 class Ferb(Navigator2D):
@@ -16,9 +15,6 @@ class Ferb(Navigator2D):
         self.policy = POLICY_REGISTRY[problem]
         log().print(f"{name}: Inicializado para {problem} ({type(self.policy).__name__})")
 
-    def start_episode(self) -> None:
-        # # Estado
-        super().start_episode()
 
     def observation(self, obs: Observation):
         if self.base_attr.episode_ended: #se episodio acabou - n se mexe mais
@@ -30,7 +26,7 @@ class Ferb(Navigator2D):
             if reward != 0.0:   # not a simulation shutdown
                 self.register_reward(reward)
 
-            self.base_attr.pos = self.base_attr.pos + self.last_action
+            self.set_pos( self.get_pos() + self.last_action )
             self.status = AgentStatus.TERMINATED
             success = True if reward > 0.0 or self.ep.total_food_delivered > 0 else False
             self.end_episode(success)
@@ -45,14 +41,14 @@ class Ferb(Navigator2D):
                 return
 
             self.base_attr.stuck_counter = 0
-            self.base_attr.pos_history.append(self.base_attr.pos)
+            self.base_attr.pos_history.append(self.get_pos())
             if len(self.base_attr.pos_history) > 10:
                 self.base_attr.pos_history.pop(0)
 
             _last_act = self.base_attr.last_attempted_action
             if _last_act.name == "move":
                 direction = _last_act.params.get("direction")
-                self.base_attr.pos = self.base_attr.pos + direction
+                self.set_pos( self.get_pos() + direction )
 
         return
 
@@ -64,7 +60,7 @@ class Ferb(Navigator2D):
         self.use_sensor(False)
 
         if self.curr_observations[ObservationType.LOCATION].payload.tile.upper() == "NEST":
-            self.base_attr.known_nest_pos = copy.deepcopy(self.base_attr.pos)
+            self.base_attr.known_nest_pos = copy.deepcopy( self.get_pos() )
 
         self.last_action = self.policy.act(self.name, self.curr_observations, self.base_attr, self.action)
         return self.last_action
