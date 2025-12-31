@@ -25,12 +25,12 @@ class Agent(ABC):
     def __init__(self, problem: str, name: str, properties: dict):
         self.name = name
         self.timestamp = properties["timestamp"]
-        self.score = float(0.0)
+        # self.score = float(0.0)
         self.properties = properties
         self.status = AgentStatus.INITIALIZING
         self._sensor : Optional[Sensor] = None
         self.curr_observations: dict[ObservationType, Observation] = {}
-        self.curr_action : Optional[Action] = None
+        # self.curr_action : Optional[Action] = None
         #self.state = State(problem, name)
         self.action = ActionBuilder(self)
 
