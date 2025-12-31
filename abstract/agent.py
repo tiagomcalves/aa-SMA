@@ -19,7 +19,7 @@ class AgentStatus(IntEnum):
 class Agent(ABC):
 
     _registry = {}
-    _env : Environment
+    # _env : Environment
 
     @abstractmethod
     def __init__(self, problem: str, name: str, properties: dict):
@@ -65,11 +65,11 @@ class Agent(ABC):
     def check_current_state(self, reward: float):
         pass
 
-    def set_env(self, env: Environment) -> None:
-        self._env = env
+    # def set_env(self, env: Environment) -> None:
+    #     self._env = env
 
-    def get_env(self) -> Environment:
-        return self._env
+    # def get_env(self) -> Environment:
+    #     return self._env
 
     def install(self, sensor: Sensor) -> None:
         self._sensor = sensor

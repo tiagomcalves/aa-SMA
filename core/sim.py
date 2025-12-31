@@ -138,7 +138,7 @@ class Simulator:
                 a.status = AgentStatus.RUNNING
                 self._active_agents += 1
                 # (re)install sensor at the beginning of each episode
-                a.set_env(self._env)
+                # a.set_env(self._env)
                 a.install(sensor)
 
 
