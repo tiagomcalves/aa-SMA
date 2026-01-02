@@ -125,9 +125,9 @@ class Map:
         return results
 
     def find_ent_pos(self, ent: MapEntity):
-        for pos, ent in self._map_cells.items():
-            if ent.name.upper() == "OBJECTIVE":
-                return pos
+        for _pos, _ent in self._map_cells.items():
+            if _ent.name.upper() == ent.name.upper():
+                return _pos
         return None
 
     def remove_entity(self, pos: Position):
