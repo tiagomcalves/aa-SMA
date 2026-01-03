@@ -120,7 +120,7 @@ class Map:
         results = {}
         target = ent.upper()
         for key, data in self._map_cells.items():
-            if data.name.upper() == target:
+            if data.name.upper() == target.upper():
                 results[key] = data
         return results
 
