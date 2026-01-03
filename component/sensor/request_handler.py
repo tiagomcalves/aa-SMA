@@ -46,7 +46,7 @@ def return_tile_type( env, pos ):
     elif tile_data.name.upper() == "NEST":
         return TileType.NEST
 
-    return -1
+    return TileType.EMPTY
 
 
 @registry.register_handler("surroundings")
