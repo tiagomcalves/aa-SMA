@@ -51,8 +51,7 @@ class Environment:
         self._lighthouse_position: Optional[Position] = None
         if self.problem_type == "lighthouse":
             _lighthouse_ent = self._map.get_entity_by_name("OBJECTIVE")
-            _lighthouse_ent = next(iter(_lighthouse_ent), None)
-            self._lighthouse_position = self._map.find_ent_pos(_lighthouse_ent)
+            self._lighthouse_position = next(iter(_lighthouse_ent), None)
             self._bfs_lighthouse = self.compute_bfs_distances(self._lighthouse_position)
 
         # problem-specific data <Foraging>
@@ -206,7 +205,7 @@ class Environment:
         # 3. MOVIMENTO ACEITE
         self.move_agent(agent, target_pos)
 
-        if tile is None:
+        if tile is None or tile.draw is False or tile.active is False:
             if self.problem_type == "lighthouse":
                 prev_d = self._bfs_lighthouse[current_pos.y][current_pos.x]
                 curr_d = self._bfs_lighthouse[target_pos.y][target_pos.x]
@@ -307,6 +306,8 @@ class Environment:
             log().print(f">>> {action.agent.name} REACHED LIGHTHOUSE!")
             self.send_observation(agent, Observation.terminate(action, tile.reward))
             return
+
+        return
 
     def serve_data(self, agent: Agent) -> dict[str, Observation]:
         if agent not in self._agent_data: return {}
