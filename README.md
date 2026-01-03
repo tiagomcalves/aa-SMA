@@ -79,6 +79,12 @@ Optional:
 | -v | --verbose   | n/a          | enable verbose output                                                      |
 ```
 
+### Example
+
+Launch a foraging simulation that autostarts, with 100 episodes at 1 and a half second of step delay, on a separate renderer window:
+
+`main.py foraging -a -e 100 -e 1500 -r`
+
 ---
 
 ## UML Diagram
