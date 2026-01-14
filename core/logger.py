@@ -297,6 +297,8 @@ class ReportLogger:
         with open(self.csv_file, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
 
+            self.results.sort(key=lambda d: d['name'].lower(), reverse=True)    #sorts in-place
+
             for line in self.results:
                 writer.writerow([
                     line.get('name', 'name'),
