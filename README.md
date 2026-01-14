@@ -10,7 +10,7 @@ estratégias de agentes autónomos em ambientes dinâmicos e cooperativos/compet
 
 ---
 
-## How does it run?
+## Scenario configuration
 
 For each scenario, there is a separate subdirectory in `/problem` directory that corresponds to each scenario's name.
 In every subdirectory, it must exist a configuration file named `config.json` that dictates environment and agents configurations.
@@ -49,6 +49,9 @@ Here is an example of a configuration file for the **Lighthouse** problem (which
 }
 ```
 
+### By default, agents are ran in "learning/training mode"
+### The only relevant parameters to the simulation <ins>outside of these files</ins> is the number of episodes and activating "agent testing mode", which is covered in the next section
+
 ---
 
 ## Launch Options
@@ -79,14 +82,82 @@ Optional:
 | -v | --verbose   | n/a          | enable verbose output                                                      |
 ```
 
-### Example
+## Please note: -l is for --headless, not "learning mode".  The -h parameter is default for --help
 
-Launch a foraging simulation that autostarts, with 100 episodes at 1 and a half second of step delay, on a separate renderer window:
+### Example:
 
-`main.py foraging -a -e 100 -e 1500 -r`
+Launch a foraging simulation that **a**utostarts, with <ins>100</ins> **e**pisodes at 1500ms of **s**tep delay,  
+on a separate renderer window (-r):
 
----
+`main.py foraging -a -e 100 -s 1500 -r`
+
+
+Here are the launch parameters used in the Report tests:
+
+- Lighthouse learning/training: `lighthouse -e 100 --headless`
+- Lighthouse testing: `lighthouse -e 100 --headless -t`
+- Foraging learning/training: `foraging -e 100 --headless`
+- Foraging testing: `foraging -e 100 --headless -t`
+
+(pretty repetitive)
+
+After a simulation, different graph prompts will show up after the simulation, waiting for your decision **y** or **n**:
+```
+Generating graphs of session 1768431755.4790132 with 100 episodes:
+Show learning graph of simulation? (y/n):
+...
+Generating heatmap of session 1768431755.4790132
+Show heatmap of simulation? (y/n): 
+...
+Generating graphs of session 1768431755.4790132 with 100 episode(s):
+Show session graph of simulation? (y/n): 
+```
+
+Note: the learning graph only prompts in learning mode.
+
+ 
+### Ok, I ran a learning/training simulation, how can I use the results in test?
+
+Let's say that you used `main.py lighthouse -e 100 -l`, this is the last output in the terminal:
+```
+============================================================
+EPISODIO CONCLUÍDO 
+Total de steps: 16
+agentes ativos: 0
+SIMULAÇÃO CONCLUÍDA
+Generating graphs of session 1768431755.4790132 with 100 episodes:
+Show learning graph of simulation? (y/n): 
+```
+
+Copy the timestamp `1768431755.4790132` and place it in the corresponding problem configuration file, the corresponding agent.  
+In this case it would be the lighthouse problem:
+
+```
+    ...
+    
+  "agents": {
+    "Phineas_The_Worker": {
+      "starting_position": [5, 5],
+      "char": "P",
+      "learning_rate": 0.1,
+      "discount_factor": 0.9,
+      "epsilon": 1.0,
+      "epsilon_decay": 0.995,
+      "kb": "1768431755.4790132"    <<-- change the timestamp in this parameter 
+    },
+    
+    ...
+```
+
 
 ## UML Diagram
 
 ![draft](/draft.png "Rascunho")
+
+### Note
+
+There is also a tool to review past session graphs: `util.py`
+```
+usage: util.py problem timestamp
+optional: '-q' or '--qlearning': "show only qlearning graphs"
+```
