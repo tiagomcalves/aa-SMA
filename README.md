@@ -2,20 +2,20 @@
 
 ## Agent Phineas (Q-Learning) and Ferb (Fixed Policy)
 
-O presente projeto prático constitui um simulador flexível em Python  
-capaz de modelar e executar cenários típicos para sistemas multi-agente (SMA), elaborado no âmbito da
-UC de Agentes Autónomos (1.º semestre do 3.º ano LEI, 2025/2026).
+O presente projeto prático constitui um simulador flexível em Python capaz de modelar e executar cenários típicos para sistemas multi-agente (SMA), elaborado no âmbito da UC de Agentes Autónomos (1.º semestre do 3.º ano LEI, 2025/2026).
 
-O simulador deverá permitir a integração e avaliação de diferentes arquiteturas e  
-estratégias de agentes autónomos em ambientes dinâmicos e cooperativos/competitivos.
+O simulador permite a integração e avaliação de diferentes arquiteturas e estratégias de agentes autónomos em ambientes dinâmicos e cooperativos/competitivos.
 
-Nota: O ficheiro README foi redigido em inglês para alinhar com os padrões da comunidade open-source e facilitar a análise técnica global.
-Como no enunciado não foi prevista uma língua específica para o presente ficheiro, optámos por elaborar desta forma.
+> **Nota:** O ficheiro README foi redigido em inglês para alinhar com os padrões da comunidade open-source e facilitar a análise técnica global. Como no enunciado não foi prevista uma língua específica para o presente ficheiro, optámos por elaborar desta forma.
 
-Elaborado por: 
-Aluno N.º 106090 Tiago Miguel Camarão Alves
-Aluno N.º 122123 Rodrigo Miguel da Silva Delaunay
-UC Agentes Autónomos 2025/2026 LEI - PL - ISCTE-IUL
+---
+
+### Elaborado por:
+* **Aluno N.º 106090:** Tiago Miguel Camarão Alves
+* **Aluno N.º 122123:** Rodrigo Miguel da Silva Delaunay
+
+**UC Agentes Autónomos 2025/2026**
+LEI - PL - ISCTE-IUL
 
 ---
 
